@@ -1,0 +1,24 @@
+openapi: 3.1.0
+info:
+  title: KivuPort Mobile API
+  version: 1.0.0
+  description: API versionnee pour les applications mobiles KivuPort.
+servers:
+  - url: /api/mobile/v1
+security:
+  - bearerAuth: []
+paths:
+  /voyages:
+    get:
+      summary: Liste les voyages planifies
+      responses:
+        '200':
+          description: Voyages disponibles
+        '401':
+          description: Jeton manquant ou invalide
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

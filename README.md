@@ -1,0 +1,31 @@
+# KivuPort
+
+Application Next.js 16 pour les voyages, réservations, confirmations et paiements simulés de KivuPort.
+
+## Démarrage
+
+```bash
+npm install
+copy .env.example .env.local
+npm run lint
+npm run build
+npm run dev
+```
+
+Ouvrir ensuite `http://localhost:3000`.
+
+## Configuration
+
+Renseigner dans `.env.local` :
+
+- `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY` ;
+- `BREVO_API_KEY`, `MAIL_FROM_ADDRESS` et `MAIL_FROM_NAME` ;
+- `NEXT_PUBLIC_APP_URL` pour les liens contenus dans les emails.
+
+Activer Google dans Supabase Authentication > Providers et déclarer l’URL de redirection de l’application. Le flux demande le choix explicite du compte avec `select_account`.
+
+Exécuter dans Supabase SQL Editor `supabase/admin-policies.sql`, puis `supabase/activity-logging.sql`.
+
+Les voyages sont consultables avec filtres port, dates, code et bateau, triés par date ou prix, puis paginés par dix. Le paiement simulé est disponible uniquement après confirmation administrative et l’email Brevo de confirmation contient les informations et liens du parcours.
+
+Les secrets ne doivent jamais être commités. Après toute modification de `.env.local`, redémarrer le serveur Next.js.
