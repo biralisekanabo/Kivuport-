@@ -41,7 +41,7 @@ import { fr } from "date-fns/locale";
 type PaymentMethod = "maisha_pay" | "card" | "orange_money" | "vodacom" | "airtel_money";
 
 // ===== DÉTECTION OPÉRATEUR =====
-function detectOperator(phoneNumber: string): { operator: string; color: string; icon: string; prefix: string } | null {
+function detectOperator(phoneNumber: string): { operator: string; color: string; bg: string; border: string; icon: string; prefix: string } | null {
   const cleaned = phoneNumber.replace(/\s/g, "");
   
   // Patterns pour les opérateurs
@@ -343,7 +343,7 @@ export default function PublicPaymentPage() {
     visible: {
       opacity: 1,
       y: 0,
-      transition: { type: "spring", stiffness: 300, damping: 25 },
+      transition: { type: "spring" as const, stiffness: 300, damping: 25 },
     },
   };
 

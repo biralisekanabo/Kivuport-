@@ -407,10 +407,11 @@ export default function DashboardPage() {
     setIsRefreshing(true);
     try {
       // ===== 1. RÉCUPÉRER LES RÉSERVATIONS =====
-      const { data: bookingsData, error: bookingsError } = await supabase
+      const { data: rawBookingsData, error: bookingsError } = await supabase
         .from("bookings")
         .select("*")
         .order("created_at", { ascending: false });
+      const bookingsData = rawBookingsData || [];
 
       if (!bookingsError && bookingsData) {
         const total = bookingsData.length;
@@ -704,7 +705,7 @@ export default function DashboardPage() {
       opacity: 1,
       y: 0,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         stiffness: 300,
         damping: 25,
       },
