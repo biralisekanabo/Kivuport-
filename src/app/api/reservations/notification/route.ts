@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendBrevoEmail } from "@/lib/brevo";
+import { createInvoicePdf } from "@/lib/invoice";
 
 export async function POST(request: Request) {
   const authorization = request.headers.get("authorization");
@@ -25,11 +26,20 @@ export async function POST(request: Request) {
   const voyage = (reservation.voyage as { code_voyage?: string } | null)?.code_voyage || "KivuPort";
   const isPaid = body.kind === "paid";
   try {
+    let attachment: { content: string; name: string }[] | undefined;
+    if (isPaid) {
+      const { data: transaction } = await supabase.from("payment_transactions").select("external_reference").eq("idpaiement", (await supabase.from("paiements").select("id").eq("idreservation", reservation.id).eq("statut", "paye").order("date_paiement", { ascending: false }).limit(1).maybeSingle()).data?.id || 0).maybeSingle();
+      if (transaction?.external_reference) {
+        const pdf = await createInvoicePdf({ reservationId: reservation.id, amount: Number(reservation.prix_total || 0), currency: "CDF", voyage, customer: [client.prenom, client.nom].filter(Boolean).join(" "), paymentReference: transaction.external_reference });
+        attachment = [{ content: Buffer.from(pdf).toString("base64"), name: `kivuport-facture-${reservation.id}.pdf` }];
+      }
+    }
     await sendBrevoEmail({
       to: [{ email: client.email, name: [client.prenom, client.nom].filter(Boolean).join(" ") }],
       subject: isPaid ? `Paiement reçu - réservation #${reservation.id}` : `Réservation reçue - KivuPort`,
       textContent: isPaid ? `Votre paiement pour la réservation #${reservation.id} a été enregistré.` : `Votre réservation #${reservation.id} pour ${voyage} a été reçue.`,
       htmlContent: isPaid ? `<h2>Paiement reçu</h2><p>Votre paiement de ${Number(reservation.prix_total || 0).toLocaleString("fr-FR")} FC pour la réservation <strong>#${reservation.id}</strong> a été enregistré.</p>` : `<h2>Réservation reçue</h2><p>Votre demande pour le voyage <strong>${voyage}</strong> est enregistrée et attend confirmation.</p>`,
+      attachment,
     });
     return NextResponse.json({ success: true });
   } catch (notificationError) {

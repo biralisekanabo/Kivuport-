@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { ArrowLeft, Bell, KeyRound, LogOut, Moon, Save, Ship, Sun, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-browser";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -20,6 +21,14 @@ export default function SettingsPage() {
   const [mfaFactorId, setMfaFactorId] = useState("");
   const [mfaQrCode, setMfaQrCode] = useState("");
   const [mfaCode, setMfaCode] = useState("");
+
+  useEffect(() => {
+    if (!message) return;
+    const lowerMessage = message.toLowerCase();
+    if (lowerMessage.includes("incorrect") || lowerMessage.includes("impossible") || lowerMessage.includes("erreur")) toast.error(message);
+    else if (lowerMessage.includes("saisissez") || lowerMessage.includes("choisissez") || lowerMessage.includes("au moins")) toast.warning(message);
+    else toast.success(message);
+  }, [message]);
 
   useEffect(() => { supabase.auth.getUser().then(async ({ data }) => { if (!data.user) return router.replace("/"); setUserId(data.user.id); setEmail(data.user.email || ""); setName(data.user.user_metadata?.name || ""); setNotifications(localStorage.getItem("kivuport-notifications") !== "false"); setDarkMode(localStorage.getItem("kivuport-theme") === "dark"); const factors = await supabase.auth.mfa.listFactors(); setMfaFactorId(factors.data?.totp?.find((factor) => factor.status === "verified")?.id || ""); }); }, [router]);
 

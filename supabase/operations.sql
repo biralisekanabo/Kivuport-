@@ -70,7 +70,7 @@ begin
    where v.id = p_idvoyage and v.statut = 'prevu' for update;
   if v_id is null then raise exception 'Voyage unavailable'; end if;
 
-  select idbateau into v_pavilion_boat from public.pavillons where id = p_idpavillon;
+  select p.idbateau into v_pavilion_boat from public.pavillons p where p.id = p_idpavillon;
   if v_pavilion_boat is null or v_pavilion_boat <> v_boat_id then raise exception 'Pavilion does not belong to voyage boat'; end if;
 
   select count(*) filter (where type_reservation <> 'cargaison'), coalesce(sum(poids_cargaison), 0)
@@ -80,18 +80,18 @@ begin
   if p_type_reservation <> 'cargaison' and v_passenger_used + 1 > v_passenger_capacity then raise exception 'Passenger capacity exceeded'; end if;
   if p_type_reservation <> 'passage' and v_cargo_used + coalesce(p_poids_cargaison, 0) > v_cargo_capacity then raise exception 'Cargo capacity exceeded'; end if;
 
-  select id into v_client_id from public.client where lower(email) = lower(auth.jwt() ->> 'email') limit 1;
+  select c.id into v_client_id from public.client c where lower(c.email) = lower(auth.jwt() ->> 'email') limit 1;
   if v_client_id is null then
     insert into public.client(nom, prenom, email, telephone, date_inscription)
     values (trim(p_client_nom), trim(p_client_prenom), lower(trim(auth.jwt() ->> 'email')), trim(p_client_telephone), now())
     returning client.id into v_client_id;
   else
-    update public.client set telephone = trim(p_client_telephone), updated_at = now() where id = v_client_id;
+    update public.client set telephone = trim(p_client_telephone), updated_at = now() where public.client.id = v_client_id;
   end if;
 
-  insert into public.reservations(date_reservation, date_embarquement, type_reservation, poids_cargaison, statut, idvoyage, idclient, idpavillon, prix_total)
-  values (coalesce(p_date_reservation, now()), p_date_embarquement, p_type_reservation, p_poids_cargaison, 'en_attente', p_idvoyage, v_client_id, p_idpavillon, p_prix_total)
-  returning reservations.id into v_id;
+  execute format('insert into public.reservations(date_reservation, date_embarquement, type_reservation, poids_cargaison, statut, idvoyage, idclient, idpavillon, prix_total) values ($1, $2, %L, $3, %L, $4, $5, $6, $7) returning id', p_type_reservation, 'en_attente')
+    into v_id
+    using coalesce(p_date_reservation, now()), p_date_embarquement, p_poids_cargaison, p_idvoyage, v_client_id, p_idpavillon, p_prix_total;
   insert into public.reservation_status_history(reservation_id, from_status, to_status, actor_email, reason)
   values (v_id, null, 'en_attente', auth.jwt() ->> 'email', 'reservation_created');
   return query select v_id;
@@ -122,7 +122,7 @@ begin
     or (v_from_status = 'arrive' and p_to_status in ('embarque', 'termine', 'rembourse'))
     or (v_from_status = 'embarque' and p_to_status = 'termine');
   if not v_allowed then raise exception 'Transition % -> % is not allowed', v_reservation.statut, p_to_status; end if;
-  execute 'update public.reservations set statut = $1, updated_at = now() where id = $2' using p_to_status, p_reservation_id;
+  execute format('update public.reservations set statut = %L, updated_at = now() where id = $1', p_to_status) using p_reservation_id;
   select * into v_reservation from public.reservations where id = p_reservation_id;
   insert into public.reservation_status_history(reservation_id, from_status, to_status, actor_email, reason)
   values (p_reservation_id, v_from_status, p_to_status, coalesce(auth.jwt() ->> 'email', 'system'), p_reason);
@@ -185,6 +185,33 @@ begin
 end;
 $$;
 
+create or replace function public.create_kivuport_public_payment_link(p_reservation_id integer)
+returns table (payment_id integer, external_reference text, amount numeric)
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  v_reservation public.reservations;
+  v_payment_id integer;
+  v_reference text;
+begin
+  select * into v_reservation from public.reservations where id = p_reservation_id for update;
+  if not found or v_reservation.statut::text <> 'confirme' then raise exception 'Reservation must be confirmed'; end if;
+  select p.id, t.external_reference into v_payment_id, v_reference
+    from public.paiements p join public.payment_transactions t on t.idpaiement = p.id
+    where p.idreservation = p_reservation_id and p.statut = 'en_attente'
+    order by p.created_at desc limit 1;
+  if v_payment_id is null then
+    v_reference := 'KP-' || p_reservation_id || '-' || replace(gen_random_uuid()::text, '-', '');
+    insert into public.paiements(montant, devise, mode_paiement, date_paiement, statut, idreservation)
+    values (v_reservation.prix_total, 'CDF', 'MOMO', now(), 'en_attente', p_reservation_id) returning id into v_payment_id;
+    insert into public.payment_transactions(idpaiement, external_reference, provider)
+    values (v_payment_id, v_reference, 'maisha_pay');
+  end if;
+  return query select v_payment_id, v_reference, v_reservation.prix_total;
+end;
+$$;
+
 create or replace function public.process_kivuport_payment_webhook(
   p_external_reference text,
   p_provider_status text,
@@ -213,7 +240,7 @@ begin
 
   v_result := case p_provider_status when 'succeeded' then 'paye' when 'refunded' then 'rembourse' when 'failed' then 'echoue' when 'cancelled' then 'echoue' else null end;
   if v_result is null then raise exception 'Unsupported provider status'; end if;
-  update public.paiements set statut = v_result, date_paiement = now(), updated_at = now() where id = v_payment.id;
+  execute format('update public.paiements set statut = %L, date_paiement = now(), updated_at = now() where id = $1', v_result) using v_payment.id;
   update public.payment_transactions set provider_status = p_provider_status, metadata = coalesce(p_metadata, '{}'::jsonb), updated_at = now() where id = v_transaction.id;
   if p_provider_status = 'succeeded' then
     perform public.transition_kivuport_reservation(v_payment.idreservation, 'arrive', 'payment_webhook');
@@ -230,6 +257,7 @@ revoke all on function public.transition_kivuport_reservation(integer, text, tex
 grant execute on function public.transition_kivuport_reservation(integer, text, text) to authenticated;
 revoke all on function public.create_kivuport_payment_intent(integer, text) from public;
 grant execute on function public.create_kivuport_payment_intent(integer, text) to authenticated;
+grant execute on function public.create_kivuport_public_payment_link(integer) to service_role;
 revoke all on function public.process_kivuport_payment_webhook(text, text, numeric, jsonb) from public;
 grant execute on function public.process_kivuport_payment_webhook(text, text, numeric, jsonb) to service_role;
 

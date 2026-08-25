@@ -3,6 +3,7 @@ type BrevoEmail = {
   subject: string;
   htmlContent: string;
   textContent?: string;
+  attachment?: { content: string; name: string }[];
 };
 
 export async function sendBrevoEmail(email: BrevoEmail) {

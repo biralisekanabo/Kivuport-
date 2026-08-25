@@ -24,7 +24,7 @@ Renseigner dans `.env.local` :
 
 Activer Google dans Supabase Authentication > Providers et déclarer l’URL de redirection de l’application. Le flux demande le choix explicite du compte avec `select_account`.
 
-Exécuter dans Supabase SQL Editor `supabase/admin-policies.sql`, puis `supabase/activity-logging.sql`.
+Exécuter dans Supabase SQL Editor `supabase/admin-policies.sql`, puis `supabase/operations.sql`, `supabase/features.sql`, `supabase/security-hardening.sql` et enfin `supabase/activity-logging.sql`. La migration `security-hardening.sql` garantit qu'un client authentifié ne lit que son profil, ses réservations, ses paiements et son historique. Les liens publics de paiement sont des liens bearer à ne pas partager.
 
 Les voyages sont consultables avec filtres port, dates, code et bateau, triés par date ou prix, puis paginés par dix. Le paiement simulé est disponible uniquement après confirmation administrative et l’email Brevo de confirmation contient les informations et liens du parcours.
 
