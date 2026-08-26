@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Activity,
+  
   Anchor,
   BarChart3,
   Building2,
-  Bell,
+  
   CalendarDays,
   Check,
   ChevronRight,
@@ -20,16 +20,23 @@ import {
   LogOut,
   Menu,
   Plus,
+  TrendingUp,
   Search,
   RefreshCw,
   Settings,
   Ship,
+  ChevronLeft,
+   
+  
+    Bell,
+     Activity, 
+    
   SlidersHorizontal,
   UserRound,
   Users,
   X,
   Ticket,
-  TrendingUp,
+  
   TrendingDown,
   Sparkles,
   Shield,
@@ -51,6 +58,11 @@ import {
   Mail,
   Phone,
   Info,
+  Home,
+  HelpCircle,
+  Moon,
+  Sun,
+  Monitor,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-browser";
@@ -76,13 +88,13 @@ type AdminReservation = {
 };
 
 const navigation: { id: Section; label: string; icon: typeof LayoutDashboard; color: string }[] = [
-  { id: "overview", label: "Vue d'ensemble", icon: LayoutDashboard, color: "blue" },
+  { id: "overview", label: "Accueil", icon: LayoutDashboard, color: "blue" },
   { id: "reservations", label: "Réservations", icon: Anchor, color: "emerald" },
   { id: "payments", label: "Paiements", icon: CircleDollarSign, color: "amber" },
-  { id: "fleet", label: "Flotte & voyages", icon: Ship, color: "purple" },
-  { id: "pavilions", label: "Pavillons & tarifs", icon: Ticket, color: "pink" },
-  { id: "infrastructure", label: "Ports & quais", icon: Gauge, color: "indigo" },
-  { id: "people", label: "Clients & équipe", icon: Users, color: "teal" },
+  { id: "fleet", label: "Flotte", icon: Ship, color: "purple" },
+  { id: "pavilions", label: "Pavillons", icon: Ticket, color: "pink" },
+  { id: "infrastructure", label: "Infrastructures", icon: Gauge, color: "indigo" },
+  { id: "people", label: "Clients", icon: Users, color: "teal" },
   { id: "settings", label: "Paramètres", icon: Settings, color: "gray" },
 ];
 
@@ -208,7 +220,6 @@ function ViewModal({
 
             {/* Corps */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              {/* En-tête avec statut */}
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl mb-6">
                 <div>
                   <p className="text-xs text-gray-400">Référence</p>
@@ -220,7 +231,6 @@ function ViewModal({
                 </div>
               </div>
 
-              {/* Informations */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
                   <User size={16} className="text-blue-500 mt-0.5" />
@@ -273,7 +283,6 @@ function ViewModal({
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-3">
                 <button
                   className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-blue-500/25"
@@ -400,7 +409,6 @@ function EditModal({
             exit={{ scale: 0.9, y: 20, opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
           >
-            {/* Header */}
             <div className="relative px-6 pt-6 pb-4 bg-gradient-to-r from-amber-600 to-orange-700">
               <button
                 className="absolute top-4 right-4 p-1.5 text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
@@ -419,7 +427,6 @@ function EditModal({
               </div>
             </div>
 
-            {/* Corps */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
               <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }} className="space-y-4">
                 <div>
@@ -516,8 +523,6 @@ function DataTableWithActions({
   onConfirm?: (row: any) => void;
   onCancel?: (row: any) => void;
 }) {
-  const [expandedRow, setExpandedRow] = useState<number | null>(null);
-
   if (rows.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-sm">
@@ -698,12 +703,400 @@ function SettingsCard({ icon: Icon, title, text }: { icon: typeof Settings; titl
   );
 }
 
+// ===== SIDEBAR STYLE IMAGE =====
+function Sidebar({ 
+  section, 
+  setSection, 
+  isSidebarOpen, 
+  setIsSidebarOpen, 
+  pendingReservations,
+  isMobile,
+  isTablet,
+  user,
+  onLogout,
+  notifications,
+  unreadMessages
+}: { 
+  section: Section;
+  setSection: (section: Section) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (open: boolean) => void;
+  pendingReservations: number;
+  isMobile: boolean;
+  isTablet: boolean;
+  user?: { name: string; email: string; avatar?: string; role: string };
+  onLogout?: () => void;
+  notifications?: number;
+  unreadMessages?: number;
+}) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
+
+  // Navigation items avec sous-menus et icônes
+  const navItems = [
+    { 
+      id: "overview", 
+      label: "Accueil", 
+      icon: LayoutDashboard,
+      description: "Vue d'ensemble"
+    },
+    { 
+      id: "reservations", 
+      label: "Réservations", 
+      icon: Anchor,
+      badge: pendingReservations,
+      badgeColor: "bg-amber-500",
+      description: "Gérer les réservations"
+    },
+    { 
+      id: "payments", 
+      label: "Paiements", 
+      icon: CircleDollarSign,
+      description: "Transactions financières",
+      subItems: [
+        { id: "payments-history", label: "Historique" },
+        { id: "payments-reports", label: "Rapports" }
+      ]
+    },
+    { 
+      id: "fleet", 
+      label: "Flotte", 
+      icon: Ship,
+      description: "Gestion des bateaux"
+    },
+    { 
+      id: "pavilions", 
+      label: "Pavillons", 
+      icon: Ticket,
+      description: "Gestion des pavillons"
+    },
+    { 
+      id: "infrastructure", 
+      label: "Infrastructures", 
+      icon: Gauge,
+      description: "Équipements et installations"
+    },
+    { 
+      id: "people", 
+      label: "Clients", 
+      icon: Users,
+      description: "Gestion des clients"
+    },
+    { 
+      id: "analytics", 
+      label: "Analytiques", 
+      icon: TrendingUp,
+      description: "Statistiques avancées",
+      new: true
+    },
+    { 
+      id: "settings", 
+      label: "Paramètres", 
+      icon: Settings,
+      description: "Configuration"
+    },
+  ];
+
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+    if (!isCollapsed && isMobile) {
+      setIsSidebarOpen(false);
+    }
+  };
+
+  const toggleSubmenu = (id: string) => {
+    setActiveSubmenu(activeSubmenu === id ? null : id);
+  };
+
+  return (
+    <>
+      {/* Overlay amélioré pour mobile */}
+      {isMobile && isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-gradient-to-br from-indigo-900/60 via-purple-900/40 to-pink-900/30 backdrop-blur-sm z-40 animate-in fade-in duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 
+          bg-gradient-to-b from-indigo-50 via-white to-purple-50
+          border-r border-indigo-100/30
+          transition-all duration-300 ease-in-out
+          ${isCollapsed && !isMobile ? 'w-20' : isMobile ? 'w-80' : isTablet ? 'w-64' : 'w-72'}
+          ${isSidebarOpen || !isMobile ? 'translate-x-0' : '-translate-x-full'}
+          flex flex-col
+          shadow-[0_0_60px_rgba(99,102,241,0.1)]
+        `}
+      >
+        {/* Header avec toggle */}
+        <div className={`p-4 border-b border-indigo-100/50 ${isCollapsed && !isMobile ? 'px-3' : ''}`}>
+          <div className="flex items-center justify-between">
+            <Link href="/dashboard" className={`flex items-center ${isCollapsed && !isMobile ? 'justify-center w-full' : 'gap-3'}`}>
+              <div className="p-2.5 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-shadow">
+                <Ship size={isCollapsed && !isMobile ? 24 : isMobile ? 22 : 20} />
+              </div>
+              {(!isCollapsed || isMobile) && (
+                <div className="flex-1">
+                  <span className="font-bold text-lg bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent block">
+                    KivuPort
+                  </span>
+                  <span className="text-[10px] font-medium text-indigo-600 bg-indigo-100/70 px-2 py-0.5 rounded-full border border-indigo-200">
+                    ADMIN • v3.0
+                  </span>
+                </div>
+              )}
+            </Link>
+            
+            <div className="flex items-center gap-1">
+              {!isMobile && (
+                <button
+                  className={`p-1.5 rounded-lg hover:bg-indigo-100/50 transition-colors text-indigo-400 hover:text-indigo-600 ${isCollapsed ? 'mx-auto' : ''}`}
+                  onClick={toggleCollapse}
+                  type="button"
+                  title={isCollapsed ? "Étendre" : "Réduire"}
+                >
+                  <ChevronLeft 
+                    size={18} 
+                    className={`transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}
+                  />
+                </button>
+              )}
+              {isMobile && (
+                <button
+                  className="p-1.5 rounded-lg hover:bg-indigo-100/50 transition-colors text-indigo-400 hover:text-indigo-600"
+                  onClick={() => setIsSidebarOpen(false)}
+                  type="button"
+                >
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Profile utilisateur amélioré */}
+        <div className={`p-4 border-b border-indigo-100/50 ${isCollapsed && !isMobile ? 'px-2' : ''}`}>
+          <div className={`flex items-center ${isCollapsed && !isMobile ? 'justify-center' : 'gap-3'}`}>
+            <div className="relative">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-base shadow-lg shadow-indigo-500/20 ring-2 ring-white">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  user?.name?.charAt(0) || "A"
+                )}
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full ring-2 ring-white">
+                <div className="absolute inset-0 bg-emerald-400 rounded-full animate-ping opacity-40" />
+              </div>
+            </div>
+            
+            {(!isCollapsed || isMobile) && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-800 truncate">
+                  {user?.name || "Administrateur"}
+                </p>
+                <p className="text-xs text-indigo-400 truncate font-medium">
+                  {user?.role || "Super Admin"}
+                </p>
+              </div>
+            )}
+          </div>
+          
+          {(!isCollapsed || isMobile) && (
+            <div className="mt-3 flex gap-1">
+              <button className="flex-1 text-xs py-1.5 px-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors font-medium">
+                Profil
+              </button>
+              <button 
+                className="flex-1 text-xs py-1.5 px-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                onClick={onLogout}
+              >
+                Déconnexion
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Navigation améliorée */}
+        <div className="flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-indigo-200 scrollbar-track-transparent">
+          <nav className="space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = section === item.id;
+              const hasSubmenu = item.subItems && item.subItems.length > 0;
+              const isSubmenuOpen = activeSubmenu === item.id;
+              
+              return (
+                <div key={item.id}>
+                  <button
+                    className={`
+                      w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                      ${isActive 
+                        ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/30 scale-[1.02]' 
+                        : 'text-gray-600 hover:text-gray-800 hover:bg-white/60 hover:shadow-sm'
+                      }
+                      ${isCollapsed && !isMobile ? 'justify-center px-2' : ''}
+                      relative group
+                    `}
+                    type="button"
+                    onClick={() => {
+                      if (hasSubmenu) {
+                        toggleSubmenu(item.id);
+                      } else {
+                        setSection(item.id as Section);
+                        if (isMobile) setIsSidebarOpen(false);
+                      }
+                    }}
+                  >
+                    <div className={`relative ${isActive ? 'text-white' : 'text-indigo-400 group-hover:text-indigo-600'} transition-colors`}>
+                      <Icon size={isCollapsed && !isMobile ? 22 : 19} />
+                    </div>
+                    
+                    {(!isCollapsed || isMobile) && (
+                      <>
+                        <span className="flex-1 text-left">{item.label}</span>
+                        
+                        {/* Badge */}
+                        {item.badge && item.badge > 0 && (
+                          <span className={`${item.badgeColor || 'bg-red-500'} text-white text-[10px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full animate-pulse`}>
+                            {item.badge}
+                          </span>
+                        )}
+                        
+                        {/* Nouveauté */}
+                        {item.new && (
+                          <span className="text-[8px] font-bold uppercase bg-gradient-to-r from-emerald-400 to-teal-400 text-white px-1.5 py-0.5 rounded-full">
+                            New
+                          </span>
+                        )}
+                        
+                        {/* Flèche sous-menu */}
+                        {hasSubmenu && (
+                          <ChevronDown 
+                            size={16} 
+                            className={`transition-transform duration-300 ${isSubmenuOpen ? 'rotate-180' : ''} text-gray-400`}
+                          />
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Tooltip pour mode réduit */}
+                    {isCollapsed && !isMobile && (
+                      <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                        {item.label}
+                        {item.badge && item.badge > 0 && (
+                          <span className="ml-1 bg-red-500 px-1 rounded-full text-[8px]">
+                            {item.badge}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Sous-menu */}
+                  {hasSubmenu && isSubmenuOpen && (!isCollapsed || isMobile) && (
+                    <div className="ml-9 mt-1 space-y-0.5 border-l-2 border-indigo-100 pl-3 animate-in slide-in-from-left-2 duration-200">
+                      {item.subItems?.map((subItem) => (
+                        <button
+                          key={subItem.id}
+                          className={`
+                            w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+                            ${section === subItem.id
+                              ? 'text-indigo-600 bg-indigo-50'
+                              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                            }
+                          `}
+                          type="button"
+                          onClick={() => {
+                            setSection(subItem.id as Section);
+                            if (isMobile) setIsSidebarOpen(false);
+                          }}
+                        >
+                          {subItem.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+
+          {/* Section d'actions rapides */}
+          {(!isCollapsed || isMobile) && (
+            <div className="mt-6 pt-4 border-t border-indigo-100/50">
+              <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider mb-2 px-3">
+                Actions rapides
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button className="px-3 py-2 bg-white rounded-lg text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center gap-1.5 border border-gray-100">
+                  <Plus size={14} />
+                  Nouveau
+                </button>
+                <button className="px-3 py-2 bg-white rounded-lg text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center gap-1.5 border border-gray-100">
+                  <Bell size={14} />
+                  {notifications && notifications > 0 && (
+                    <span className="bg-red-500 text-white text-[8px] px-1 rounded-full">
+                      {notifications}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer avec informations système */}
+        <div className={`p-3 border-t border-indigo-100/50 bg-white/30 ${isCollapsed && !isMobile ? 'px-2' : ''}`}>
+          {(!isCollapsed || isMobile) ? (
+            <div className="flex items-center justify-between text-[10px] text-gray-400">
+              <span className="flex items-center gap-1">
+                <Activity size={12} className="text-emerald-400" />
+                Système opérationnel
+              </span>
+              <span>v3.0.1</span>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <Activity size={16} className="text-emerald-400" />
+            </div>
+          )}
+        </div>
+      </aside>
+    </>
+  );
+}
+
+
+        {/* Footer avec actions */}
+        <div className="p-3 border-t border-gray-100/80">
+          <button
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+            type="button"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.href = "/";
+            }}
+          >
+            <LogOut size={18} />
+            <span>Déconnexion</span>
+          </button>
+        </div>
+      
+    
+
+
+
 // ===== PAGE PRINCIPALE =====
 export default function AdminPage() {
   const router = useRouter();
   const [section, setSection] = useState<Section>("overview");
   const [isReady, setIsReady] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
   const [query, setQuery] = useState("");
   const [reservations, setReservations] = useState<AdminReservation[]>([]);
   const [adminRows, setAdminRows] = useState<AdminRows>({
@@ -724,12 +1117,24 @@ export default function AdminPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
 
+  // ===== DÉTECTION ÉCRAN =====
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsTablet(width >= 768 && width < 1024);
+    };
+    
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // ===== MODALS STATE =====
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [selectedRow, setSelectedRow] = useState<any>(null);
 
   // ===== VERIFICATION ADMIN =====
   useEffect(() => {
@@ -751,7 +1156,6 @@ export default function AdminPage() {
           return;
         }
 
-        // Charger les réservations
         const { data, error } = await supabase
           .from("reservations")
           .select("id, date_reservation, type_reservation, statut, prix_total, voyage:voyages(code_voyage), client:client(nom, prenom, email, telephone)")
@@ -776,7 +1180,6 @@ export default function AdminPage() {
           })));
         }
 
-        // Charger les autres données
         const [paymentsResult, boatsResult, portsResult, docksResult, clientsResult, voyagesResult, pavilionsResult] = await Promise.all([
           supabase.from("paiements").select("id, montant, devise, mode_paiement, date_paiement, statut"),
           supabase.from("bateaux").select("id, nom, immatriculation, type, capacite_totale, statut"),
@@ -787,7 +1190,6 @@ export default function AdminPage() {
           supabase.from("pavillons").select("id, nom, classe, capacite_max, unite, prix_unitaire, prix_tonne, devise, bateau:bateaux(nom)"),
         ]);
 
-        // Métriques
         const paymentRecords = (paymentsResult.data || []) as any[];
         const clientRecords = (clientsResult.data || []) as any[];
         const voyageRecords = (voyagesResult.data || []) as any[];
@@ -955,20 +1357,13 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   }
 
-  async function logout() {
-    await supabase.auth.signOut();
-    router.replace("/");
-  }
-
   // ===== GESTION DES MODALS =====
   const handleView = (row: any) => {
-    // Trouver la réservation complète
     const fullData = reservations.find(r => r.reference === row[0] || String(r.id) === row[0]);
     if (fullData) {
       setSelectedItem(fullData);
       setViewModalOpen(true);
     } else {
-      // Créer un objet à partir de la ligne
       setSelectedItem({
         reference: row[0],
         client: row[1],
@@ -979,6 +1374,16 @@ export default function AdminPage() {
         details: "Détails disponibles sur la réservation complète.",
       });
       setViewModalOpen(true);
+    }
+  };
+
+  const handleEdit = (row: any) => {
+    const fullData = reservations.find(r => r.reference === row[0] || String(r.id) === row[0]);
+    if (fullData) {
+      setSelectedItem(fullData);
+      setEditModalOpen(true);
+    } else {
+      toast.error("Impossible de modifier cette réservation");
     }
   };
 
@@ -1068,85 +1473,31 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ===== SIDEBAR ===== */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 shadow-xl transform transition-transform duration-300 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0`}
-      >
-        <div className="flex flex-col h-full">
-          <div className="p-5 border-b border-gray-100">
-            <Link href="/dashboard" className="flex items-center gap-2.5">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white shadow-lg shadow-blue-500/25">
-                <Ship size={18} />
-              </div>
-              <span className="font-bold text-lg text-gray-900">KivuPort</span>
-              <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                ADMIN
-              </span>
-            </Link>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">
-              Navigation
-            </p>
-            <nav className="space-y-1">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                const isActive = section === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                      isActive
-                        ? "bg-blue-50 text-blue-700 shadow-sm"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                    }`}
-                    type="button"
-                    onClick={() => {
-                      setSection(item.id);
-                      setIsSidebarOpen(false);
-                    }}
-                  >
-                    <Icon size={17} className={isActive ? "text-blue-600" : "text-gray-400"} />
-                    {item.label}
-                    {item.id === "reservations" && pendingReservations > 0 && (
-                      <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        {pendingReservations}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          <div className="p-4 border-t border-gray-100">
-            <button
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-              type="button"
-              onClick={logout}
-            >
-              <LogOut size={17} />
-              Déconnexion
-            </button>
-          </div>
-        </div>
-      </aside>
+      <Sidebar
+        section={section}
+        setSection={setSection}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        pendingReservations={pendingReservations}
+        isMobile={isMobile}
+        isTablet={isTablet}
+      />
 
       {/* ===== MAIN ===== */}
-      <div className="lg:pl-72">
+      <div className={`transition-all duration-300 ${isMobile ? "ml-0" : "ml-64"}`}>
         {/* Topbar */}
         <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
           <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
             <div className="flex items-center gap-3">
-              <button
-                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                type="button"
-                onClick={() => setIsSidebarOpen(true)}
-              >
-                <Menu size={20} className="text-gray-600" />
-              </button>
+              {isMobile && (
+                <button
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  type="button"
+                  onClick={() => setIsSidebarOpen(true)}
+                >
+                  <Menu size={20} className="text-gray-600" />
+                </button>
+              )}
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-gray-400">Administration</span>
                 <ChevronRight size={14} className="text-gray-300" />
@@ -1174,7 +1525,7 @@ export default function AdminPage() {
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
                 )}
               </button>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-semibold">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg shadow-blue-500/25">
                 A
               </div>
             </div>
@@ -1327,6 +1678,7 @@ export default function AdminPage() {
                   row.status,
                 ])}
                 onView={handleView}
+                onEdit={handleEdit}
                 onDelete={handleDelete}
                 onConfirm={confirmReservationRow}
                 onCancel={cancelReservationRow}

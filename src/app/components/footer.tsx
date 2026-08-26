@@ -129,13 +129,13 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="mailto:contact@kivuport.cd"
+                  href="mailto:kivuport@gmail.com"
                   className="flex items-center gap-3 text-sm text-slate-300 hover:text-white transition-all duration-300 group"
                 >
                   <span className="p-1 bg-blue-500/10 rounded-md group-hover:bg-blue-500/20 transition-colors">
                     <Mail size={15} className="text-blue-400" />
                   </span>
-                  <span>contact@kivuport.cd</span>
+                  <span>kivuport@gmail.com</span>
                 </a>
               </li>
               <li>
