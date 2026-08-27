@@ -42,7 +42,7 @@ import {
   Download,
   Printer,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase-browser";
 import { toast } from "sonner";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
@@ -98,28 +98,37 @@ function ReservationCard({
   index: number;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
+  
   const statusColors = {
     en_attente: "bg-amber-50 text-amber-700 border-amber-200",
     confirme: "bg-emerald-50 text-emerald-700 border-emerald-200",
     annule: "bg-red-50 text-red-700 border-red-200",
-    paye: "bg-blue-50 text-blue-700 border-blue-200",
+    arrive: "bg-blue-50 text-blue-700 border-blue-200",
   };
 
   const statusLabels = {
     en_attente: "En attente",
     confirme: "Confirmée",
     annule: "Annulée",
-    paye: "Payée",
+    arrive: "Payée",
   };
 
   const statusIcons = {
     en_attente: <ClockIcon size={14} className="text-amber-500" />,
     confirme: <CheckCircle size={14} className="text-emerald-500" />,
     annule: <X size={14} className="text-red-500" />,
-    paye: <CreditCard size={14} className="text-blue-500" />,
+    arrive: <CreditCard size={14} className="text-blue-500" />,
   };
 
-  const isPaidStatus = isPaid;
+  const isPaidStatus = isPaid || reservation.statut === "arrive";
+  const canPay = reservation.statut === "confirme" && !isPaidStatus;
+
+  const handlePay = async () => {
+    setIsPaying(true);
+    await onPay(reservation);
+    setIsPaying(false);
+  };
 
   return (
     <motion.article
@@ -141,12 +150,6 @@ function ReservationCard({
                 {statusIcons[reservation.statut as keyof typeof statusIcons]}
                 {isPaidStatus ? "Payée" : statusLabels[reservation.statut as keyof typeof statusLabels] || reservation.statut}
               </span>
-              {isPaidStatus && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-medium">
-                  <CheckCircle size={10} />
-                  Payé
-                </span>
-              )}
             </div>
             <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-500">
               <span className="flex items-center gap-1">
@@ -181,6 +184,52 @@ function ReservationCard({
               </motion.div>
             </button>
           </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+          {canPay && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm shadow-blue-500/25"
+              onClick={handlePay}
+              disabled={isPaying}
+            >
+              {isPaying ? (
+                <LoaderCircle size={14} className="animate-spin" />
+              ) : (
+                <CreditCard size={14} />
+              )}
+              {isPaying ? "Préparation..." : "Payer"}
+            </motion.button>
+          )}
+
+          {isPaidStatus && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 rounded-lg">
+              <CheckCircle size={14} />
+              Payé
+            </span>
+          )}
+
+          {reservation.statut === "en_attente" && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+              onClick={() => onCancel(reservation)}
+            >
+              <X size={14} />
+              Annuler
+            </motion.button>
+          )}
+
+          {reservation.statut === "confirme" && !isPaidStatus && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 rounded-lg">
+              <CheckCircle size={14} />
+              À payer
+            </span>
+          )}
         </div>
 
         {/* Détails étendus */}
@@ -222,6 +271,8 @@ function ReservationCard({
 // ===== PAGE PRINCIPALE =====
 export default function ReservationsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -262,6 +313,23 @@ export default function ReservationsPage() {
       toast.success(message);
     }
   }, [message]);
+
+  // ===== MESSAGE DE RETOUR DE PAIEMENT =====
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    if (paymentStatus === 'success') {
+      toast.success("✅ Paiement effectué avec succès !");
+      setMessage("✅ Paiement effectué avec succès ! Votre réservation est maintenant payée.");
+      setMessageType("success");
+      // Nettoyer l'URL
+      router.replace('/reservations');
+    } else if (paymentStatus === 'cancelled') {
+      toast.info("Paiement annulé");
+      setMessage("Le paiement a été annulé.");
+      setMessageType("info");
+      router.replace('/reservations');
+    }
+  }, [searchParams, router]);
 
   // ===== CHARGEMENT =====
   useEffect(() => {
@@ -426,52 +494,62 @@ export default function ReservationsPage() {
     await loadReservations(email);
   }
 
-  // ===== PAIEMENT =====
-  async function simulatePayment(reservation: Reservation) {
-    setMessage("");
+  // ===== PAIEMENT AVEC TOKEN =====
+  async function initiatePayment(reservation: Reservation) {
+    // 1. Vérifier le statut
     if (reservation.statut !== "confirme") {
       setMessage("Le paiement sera disponible après confirmation de votre réservation.");
       setMessageType("warning");
       return;
     }
+
+    // 2. Vérifier si déjà payé
     if (paidReservationIds.includes(reservation.id)) {
       setMessage("Cette réservation est déjà payée.");
       setMessageType("info");
       return;
     }
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
-      setMessage("Votre session a expiré. Reconnectez-vous.");
+    setIsSubmitting(true);
+    setMessage("");
+
+    try {
+      // 3. Générer un token de paiement
+      const token = `pay-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+      const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      const { data, error } = await supabase
+        .from("reservations")
+        .update({
+          token_paiement: token,
+          token_expire_at: expireAt,
+          tentative_paiement: 0,
+        })
+        .eq("id", reservation.id)
+        .select("token_paiement")
+        .single();
+
+      if (error) {
+        setMessage(`Erreur lors de la génération du paiement : ${error.message}`);
+        setMessageType("error");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 4. Rediriger vers la page de paiement
+      router.push(`/paiement/${data.token_paiement}`);
+
+    } catch (error) {
+      setMessage("Une erreur est survenue. Veuillez réessayer.");
       setMessageType("error");
-      return;
+      setIsSubmitting(false);
     }
-
-    const response = await fetch("/api/payments/simulate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${sessionData.session.access_token}`,
-      },
-      body: JSON.stringify({ reservationId: reservation.id }),
-    });
-
-    const result = await response.json().catch(() => null) as { error?: string } | null;
-
-    if (!response.ok) {
-      setMessage(`Paiement impossible : ${result?.error || "Le serveur a refusé la demande."}`);
-      setMessageType("error");
-      return;
-    }
-
-    setMessage(`✅ Paiement simulé avec succès pour la réservation #${reservation.id}.`);
-    setMessageType("success");
-    setPaidReservationIds((current) => [...current, reservation.id]);
-    await loadReservations(email);
   }
 
   // ===== ANNULATION =====
   async function cancelReservation(reservation: Reservation) {
+    if (!window.confirm(`Annuler la réservation #${reservation.id} ?`)) return;
+
     const result = await supabase.rpc("transition_kivuport_reservation", {
       p_reservation_id: reservation.id,
       p_to_status: "annule",
@@ -511,7 +589,7 @@ export default function ReservationsPage() {
 
     if (filterStatus !== "all") {
       if (filterStatus === "paye") {
-        filtered = filtered.filter((r) => paidReservationIds.includes(r.id));
+        filtered = filtered.filter((r) => paidReservationIds.includes(r.id) || r.statut === "arrive");
       } else {
         filtered = filtered.filter((r) => r.statut === filterStatus);
       }
@@ -525,7 +603,7 @@ export default function ReservationsPage() {
     total: reservations.length,
     pending: reservations.filter((r) => r.statut === "en_attente").length,
     confirmed: reservations.filter((r) => r.statut === "confirme").length,
-    paid: paidReservationIds.length,
+    paid: reservations.filter((r) => r.statut === "arrive" || paidReservationIds.includes(r.id)).length,
   };
 
   // ===== ANIMATIONS =====
@@ -638,7 +716,10 @@ export default function ReservationsPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-xs font-medium text-gray-600">
+              <button 
+                className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-xs font-medium text-gray-600"
+                onClick={() => loadReservations(email)}
+              >
                 <RefreshCw size={14} />
                 Actualiser
               </button>
@@ -654,6 +735,32 @@ export default function ReservationsPage() {
             >
               <AlertCircle size={18} className="shrink-0" />
               <span>{dataError}</span>
+            </motion.div>
+          )}
+
+          {/* Message */}
+          {message && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex items-center gap-2 p-4 rounded-xl text-sm ${
+                messageType === "success"
+                  ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                  : messageType === "error"
+                  ? "bg-red-50 border border-red-200 text-red-700"
+                  : messageType === "warning"
+                  ? "bg-amber-50 border border-amber-200 text-amber-700"
+                  : "bg-blue-50 border border-blue-200 text-blue-700"
+              }`}
+            >
+              {messageType === "success" ? (
+                <CheckCircle size={18} className="shrink-0" />
+              ) : messageType === "error" ? (
+                <AlertCircle size={18} className="shrink-0" />
+              ) : (
+                <Info size={18} className="shrink-0" />
+              )}
+              <span>{message}</span>
             </motion.div>
           )}
 
@@ -771,7 +878,7 @@ export default function ReservationsPage() {
                           value={cargoWeight}
                           onChange={(event) => setCargoWeight(event.target.value)}
                           className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-400 outline-none transition-all text-sm"
-                          required
+                          required={reservationType !== "passage"}
                         />
                       </div>
                     )}
@@ -890,7 +997,7 @@ export default function ReservationsPage() {
                         key={reservation.id}
                         reservation={reservation}
                         isPaid={paidReservationIds.includes(reservation.id)}
-                        onPay={simulatePayment}
+                        onPay={initiatePayment}
                         onCancel={cancelReservation}
                         index={index}
                       />

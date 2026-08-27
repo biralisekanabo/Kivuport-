@@ -1,73 +1,54 @@
-import { NextResponse } from "next/server";
+// app/api/payments/receipt/route.ts
 import { createClient } from "@supabase/supabase-js";
-import { createInvoicePdf } from "@/lib/invoice";
-
-export const runtime = "nodejs";
+import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-  const token = new URL(request.url).searchParams.get("token")?.trim();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const { searchParams } = new URL(request.url);
+  const token = searchParams.get("token");
 
-  if (!token || !supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json({ error: "Lien de reçu invalide." }, { status: 400 });
+  if (!token) {
+    return NextResponse.json({ error: "Token requis" }, { status: 400 });
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.json({ error: "Supabase n'est pas configuré." }, { status: 500 });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: transaction, error: transactionError } = await supabase
-    .from("payment_transactions")
-    .select("idpaiement, external_reference")
-    .eq("external_reference", token)
-    .maybeSingle();
-
-  if (transactionError || !transaction) {
-    return NextResponse.json({ error: transactionError?.message || "Reçu introuvable." }, { status: 404 });
-  }
-
-  const { data: payment, error: paymentError } = await supabase
-    .from("paiements")
-    .select("id, montant, devise, statut, idreservation")
-    .eq("id", transaction.idpaiement)
-    .maybeSingle();
-
-  if (paymentError || !payment) {
-    return NextResponse.json({ error: paymentError?.message || "Paiement introuvable." }, { status: 404 });
-  }
-
-  if (payment.statut !== "paye") {
-    return NextResponse.json({ error: "Le reçu est disponible après confirmation du paiement." }, { status: 409 });
-  }
-
-  const { data: reservation, error: reservationError } = await supabase
+  const { data, error } = await supabase
     .from("reservations")
-    .select("id, prix_total, client:client(nom, prenom), voyage:voyages(code_voyage)")
-    .eq("id", payment.idreservation)
-    .maybeSingle();
+    .select(`
+      id,
+      prix_total,
+      date_reservation,
+      client:client(nom, prenom, email, telephone),
+      voyage:voyages(code_voyage),
+      paiements:paiements(montant, mode_paiement, date_paiement, reference)
+    `)
+    .eq("token_paiement", token)
+    .single();
 
-  if (reservationError || !reservation) {
-    return NextResponse.json({ error: reservationError?.message || "Réservation introuvable." }, { status: 404 });
+  if (error || !data) {
+    return NextResponse.json({ error: "Réservation introuvable" }, { status: 404 });
   }
 
-  const client = reservation.client as { nom?: string; prenom?: string } | null;
-  const voyage = (reservation.voyage as { code_voyage?: string } | null)?.code_voyage || "KivuPort";
-  const pdf = await createInvoicePdf({
-    reservationId: reservation.id,
-    amount: Number(payment.montant || reservation.prix_total || 0),
-    currency: payment.devise || "CDF",
-    voyage,
-    customer: [client?.prenom, client?.nom].filter(Boolean).join(" "),
-    paymentReference: transaction.external_reference,
-  });
-
-  return new NextResponse(pdf as BodyInit, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="kivuport-facture-${reservation.id}.pdf"`,
-      "Cache-Control": "no-store",
-    },
+  // Pour l'instant, retourner les données (plus tard, générer un PDF)
+  const client = (data.client as { nom?: string; prenom?: string; email?: string; telephone?: string } | null);
+  const voyage = (data.voyage as { code_voyage?: string } | null);
+  return NextResponse.json({
+    reference: `KP-${String(data.id).padStart(4, "0")}`,
+    client: `${client?.prenom || ""} ${client?.nom || ""}`.trim(),
+    email: client?.email || "",
+    telephone: client?.telephone || "",
+    destination: voyage?.code_voyage || "",
+    amount: data.prix_total,
+    date: new Date(data.date_reservation).toLocaleDateString("fr-FR"),
+    payment: data.paiements?.[0] || null,
   });
 }

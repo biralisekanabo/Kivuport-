@@ -29,11 +29,11 @@ export function Footer() {
   ];
 
   const quickLinks = [
-    { label: "À propos", href: "#" },
-    { label: "Services", href: "#" },
-    { label: "Contact", href: "#" },
-    { label: "FAQ", href: "#" },
-    { label: "Mentions légales", href: "#" },
+    { label: "À propos", href: "/about" },
+    { label: "Services", href: "/services" },
+    { label: "Contact", href: "/contact" },
+    { label: "FAQ", href: "/faq" },
+    { label: "Mentions légales", href: "/legal" },
   ];
 
   return (
@@ -219,11 +219,11 @@ export function Footer() {
           </p>
 
           <div className="flex items-center gap-2 text-xs text-slate-400">
-            <Link href="#" className="hover:text-white transition-colors">
+            <Link href="/privacy" className="hover:text-white transition-colors">
               Politique de confidentialité
             </Link>
             <span className="w-1 h-1 bg-slate-600 rounded-full" />
-            <Link href="#" className="hover:text-white transition-colors">
+            <Link href="/terms" className="hover:text-white transition-colors">
               Conditions d&apos;utilisation
             </Link>
             <span className="w-1 h-1 bg-slate-600 rounded-full" />

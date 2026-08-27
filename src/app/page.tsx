@@ -27,6 +27,19 @@ import {
   ZoomOut,
   Maximize,
   Minimize,
+  Award,
+  Users,
+  Star,
+  CheckCircle,
+  ChevronRight,
+  Search,
+  Sparkles,
+  Compass,
+  Waves,
+  Sailboat,
+  Package,
+  UserPlus,
+  Shield,
 } from "lucide-react";
 import { Footer } from "@/app/components/footer";
 import { LoginModal } from "@/app/components/login-modal";
@@ -61,7 +74,6 @@ const Polyline = dynamic(
 
 // ===== CHARGEMENT DES STYLES CSS =====
 import "leaflet/dist/leaflet.css";
-// Fix pour les icônes Leaflet
 
 // ===== TYPES =====
 type WeatherData = {
@@ -112,6 +124,33 @@ const services = [
     icon: ShieldCheck,
     title: "Suivi en confiance",
     description: "Retrouvez vos demandes, confirmations et paiements au même endroit.",
+  },
+];
+
+const benefits = [
+  {
+    icon: Shield,
+    title: "Sécurité garantie",
+    description: "Tous nos bateaux sont certifiés et régulièrement inspectés.",
+    color: "blue",
+  },
+  {
+    icon: Clock,
+    title: "Ponctualité assurée",
+    description: "98% de nos traversées partent à l'heure.",
+    color: "emerald",
+  },
+  {
+    icon: Users,
+    title: "Support 24/7",
+    description: "Une équipe dédiée à votre écoute à tout moment.",
+    color: "purple",
+  },
+  {
+    icon: Award,
+    title: "Excellence reconnue",
+    description: "Élu meilleur service portuaire de la région.",
+    color: "amber",
   },
 ];
 
@@ -178,20 +217,17 @@ function InteractiveMap({ userLocation, onMapReady }: {
         zoomControl={false}
         attributionControl={true}
       >
-        {/* Fond de carte */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Couche du lac Kivu - cercles de proximité */}
         <Circle
           center={[-1.679, 29.225]}
           radius={50000}
           pathOptions={{ color: "#3B82F6", fillColor: "#93C5FD", fillOpacity: 0.15, weight: 1 }}
         />
 
-        {/* Routes maritimes */}
         {routes.map((route) => {
           const fromPort = ports.find(p => p.name === route.from);
           const toPort = ports.find(p => p.name === route.to);
@@ -213,7 +249,6 @@ function InteractiveMap({ userLocation, onMapReady }: {
           );
         })}
 
-        {/* Ports */}
         {ports.map((port) => (
           <Marker
             key={port.name}
@@ -232,7 +267,6 @@ function InteractiveMap({ userLocation, onMapReady }: {
           </Marker>
         ))}
 
-        {/* Position utilisateur */}
         {userLocation && (
           <>
             <Circle
@@ -262,7 +296,6 @@ function InteractiveMap({ userLocation, onMapReady }: {
         )}
       </MapContainer>
 
-      {/* Contrôles de la carte */}
       <div className="absolute bottom-4 right-4 flex flex-col gap-1.5 z-[1000]">
         <button 
           className="p-1.5 sm:p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
@@ -287,7 +320,6 @@ function InteractiveMap({ userLocation, onMapReady }: {
         </button>
       </div>
 
-      {/* Légende responsive */}
       <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl p-2 sm:p-3 shadow-lg border border-gray-100 text-[10px] sm:text-xs z-[1000] max-w-[200px] sm:max-w-none">
         <h4 className="font-semibold text-gray-700 mb-1 sm:mb-1.5">Lac Kivu - Ports</h4>
         <div className="space-y-0.5 sm:space-y-1">
@@ -431,6 +463,367 @@ function PortStatus({ portInfo }: { portInfo: PortInfo }) {
   );
 }
 
+// ===== SECTION TRAJET GOMA → BUKAVU =====
+function RouteSection({ onAuth }: { onAuth: (mode: "login" | "signup") => void }) {
+  return (
+    <section className="py-20 bg-gradient-to-b from-white to-blue-50/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* En-tête de section */}
+        <motion.div
+          className="text-center max-w-3xl mx-auto mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full text-blue-600 text-sm font-medium mb-4">
+            <Navigation size={16} className="text-blue-500" />
+            Trajet phare
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+            Goma → <span className="text-blue-600">Bukavu</span>
+          </h2>
+          <p className="text-gray-600 mt-3 max-w-2xl mx-auto">
+            La traversée emblématique du Lac Kivu. Un voyage de 2h30 entre deux des plus belles villes de l&apos;Est de la RDC.
+          </p>
+        </motion.div>
+
+        {/* Carte principale du trajet */}
+        <motion.div
+          className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          {/* En-tête de la carte */}
+          <div className="relative px-6 pt-6 pb-4 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-400/20 rounded-full blur-3xl" />
+              <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-purple-400/20 rounded-full blur-3xl" />
+            </div>
+            <div className="relative flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-semibold text-blue-200 uppercase tracking-wider">
+                  Trajet régulier
+                </p>
+                <h3 className="text-xl font-bold text-white">Goma → Bukavu</h3>
+              </div>
+              <div className="flex items-center gap-2 text-white/60 text-xs">
+                <Clock size={14} />
+                <span>2h30 de traversée</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Corps de la carte - Visualisation du trajet */}
+          <div className="p-6">
+            {/* Carte interactive miniature */}
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-50 via-slate-100 to-indigo-50/50 h-64 md:h-80 mb-6 border border-gray-200">
+              <div className="absolute inset-0 bg-gradient-to-b from-blue-400/10 via-blue-300/5 to-transparent" />
+              
+              <div className="absolute inset-0 overflow-hidden">
+                <motion.div
+                  className="absolute inset-0"
+                  animate={{
+                    backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
+                  }}
+                  transition={{
+                    duration: 15,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                  style={{
+                    backgroundImage: `
+                      radial-gradient(ellipse at 20% 60%, rgba(59,130,246,0.08) 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 40%, rgba(59,130,246,0.06) 0%, transparent 40%),
+                      radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.04) 0%, transparent 60%)
+                    `,
+                    backgroundSize: "200% 200%",
+                  }}
+                />
+              </div>
+
+              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 400">
+                <path
+                  d="M 50,200 Q 200,100 400,200 Q 600,300 750,200"
+                  fill="none"
+                  stroke="rgba(59,130,246,0.1)"
+                  strokeWidth="8"
+                  strokeDasharray="8,8"
+                />
+                
+                <motion.path
+                  d="M 50,200 Q 200,100 400,200 Q 600,300 750,200"
+                  fill="none"
+                  stroke="url(#gradient)"
+                  strokeWidth="4"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "linear",
+                    repeatDelay: 1,
+                  }}
+                />
+                
+                <defs>
+                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#3B82F6" />
+                    <stop offset="50%" stopColor="#6366F1" />
+                    <stop offset="100%" stopColor="#8B5CF6" />
+                  </linearGradient>
+                </defs>
+
+                {/* Port de Goma */}
+                <g transform="translate(30, 180)">
+                  <circle cx="20" cy="20" r="16" fill="#3B82F6" className="shadow-lg" />
+                  <circle cx="20" cy="20" r="8" fill="white" opacity="0.3" />
+                  <circle cx="20" cy="20" r="4" fill="white" />
+                  <text x="20" y="50" textAnchor="middle" className="text-xs font-semibold fill-gray-700">Goma</text>
+                  <rect x="5" y="55" width="30" height="14" rx="7" fill="#3B82F6" opacity="0.15" />
+                  <text x="20" y="65" textAnchor="middle" className="text-[8px] fill-blue-600 font-medium">Départ</text>
+                </g>
+
+                {/* Bateau animé */}
+                <motion.g
+                  animate={{
+                    x: [0, 700],
+                    y: [0, 0],
+                  }}
+                  transition={{
+                    duration: 6,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                >
+                  <g transform="translate(100, 185)">
+                    <rect x="-12" y="-6" width="24" height="12" rx="6" fill="#3B82F6" />
+                    <rect x="-8" y="-10" width="16" height="4" rx="2" fill="#60A5FA" />
+                    <rect x="-4" y="-14" width="8" height="4" rx="2" fill="#93C5FD" />
+                    <circle cx="12" cy="0" r="2" fill="#FCD34D" />
+                  </g>
+                </motion.g>
+
+                {/* Port de Bukavu */}
+                <g transform="translate(730, 180)">
+                  <circle cx="20" cy="20" r="16" fill="#10B981" className="shadow-lg" />
+                  <circle cx="20" cy="20" r="8" fill="white" opacity="0.3" />
+                  <circle cx="20" cy="20" r="4" fill="white" />
+                  <text x="20" y="50" textAnchor="middle" className="text-xs font-semibold fill-gray-700">Bukavu</text>
+                  <rect x="5" y="55" width="30" height="14" rx="7" fill="#10B981" opacity="0.15" />
+                  <text x="20" y="65" textAnchor="middle" className="text-[8px] fill-emerald-600 font-medium">Arrivée</text>
+                </g>
+
+                <circle cx="250" cy="150" r="4" fill="#6366F1" opacity="0.5" />
+                <circle cx="400" cy="200" r="4" fill="#6366F1" opacity="0.5" />
+                <circle cx="550" cy="250" r="4" fill="#6366F1" opacity="0.5" />
+
+                <text x="250" y="135" textAnchor="middle" className="text-[8px] fill-gray-400">45 min</text>
+                <text x="400" y="185" textAnchor="middle" className="text-[8px] fill-gray-400">1h30</text>
+                <text x="550" y="235" textAnchor="middle" className="text-[8px] fill-gray-400">2h</text>
+
+                <motion.g
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <circle cx="400" cy="195" r="12" fill="white" stroke="#6366F1" strokeWidth="2" />
+                  <text x="400" y="199" textAnchor="middle" className="text-xs fill-indigo-600">⚓</text>
+                </motion.g>
+              </svg>
+
+              <motion.div
+                className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-white"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                    <span className="text-xs text-gray-600">En direct</span>
+                  </div>
+                  <div className="w-px h-4 bg-gray-200" />
+                  <div className="flex items-center gap-1">
+                    <Users size={12} className="text-gray-400" />
+                    <span className="text-xs text-gray-600">42 passagers</span>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Informations du trajet */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-100 rounded-lg">
+                    <Clock size={14} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Durée</p>
+                    <p className="text-sm font-semibold text-gray-900">2h30</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-emerald-100 rounded-lg">
+                    <Ship size={14} className="text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Navire</p>
+                    <p className="text-sm font-semibold text-gray-900">Kivu 1</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-purple-100 rounded-lg">
+                    <Ticket size={14} className="text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Prix</p>
+                    <p className="text-sm font-semibold text-gray-900">25 000 FC</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-amber-100 rounded-lg">
+                    <CalendarDays size={14} className="text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Prochain départ</p>
+                    <p className="text-sm font-semibold text-gray-900">08:00</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Boutons d'action */}
+            <div className="mt-6 flex flex-wrap gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex-1 min-w-[140px] px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2"
+                onClick={() => onAuth("signup")}
+              >
+                <Ticket size={18} />
+                Réserver ce trajet
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-xl border border-gray-200 transition-all flex items-center justify-center gap-2"
+                onClick={() => document.getElementById('carte')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                <MapPin size={18} />
+                Voir sur la carte
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Points forts du trajet */}
+        <motion.div
+          className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
+          {[
+            {
+              icon: Shield,
+              title: "Sécurité maximale",
+              description: "Bateau certifié et équipage expérimenté",
+              color: "blue",
+            },
+            {
+              icon: Wind,
+              title: "Confort optimal",
+              description: "Pavillons spacieux et équipements modernes",
+              color: "emerald",
+            },
+            {
+              icon: Award,
+              title: "Service reconnu",
+              description: "Élu meilleure traversée du Lac Kivu",
+              color: "amber",
+            },
+          ].map((item, index) => (
+            <motion.div
+              key={item.title}
+              className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all"
+              whileHover={{ y: -4 }}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * index }}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${
+                item.color === 'blue' ? 'bg-blue-50 text-blue-600' :
+                item.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' :
+                'bg-amber-50 text-amber-600'
+              }`}>
+                <item.icon size={20} />
+              </div>
+              <h4 className="font-semibold text-gray-900 text-sm">{item.title}</h4>
+              <p className="text-xs text-gray-500 mt-1">{item.description}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Autres destinations */}
+        <motion.div
+          className="mt-12 pt-8 border-t border-gray-200"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-semibold text-gray-700">Autres destinations</h4>
+            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+              Voir toutes <ArrowRight size={14} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { name: "Kalehe", time: "1h45", price: "18 000 FC" },
+              { name: "Minova", time: "3h15", price: "32 000 FC" },
+              { name: "Idjwi", time: "4h00", price: "40 000 FC" },
+              { name: "Sake", time: "1h15", price: "12 000 FC" },
+            ].map((dest, index) => (
+              <motion.button
+                key={dest.name}
+                className="p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors text-left group"
+                whileHover={{ x: 4 }}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 * index }}
+              >
+                <p className="font-medium text-gray-900 text-sm group-hover:text-blue-600 transition-colors">
+                  {dest.name}
+                </p>
+                <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                  <Clock size={10} />
+                  <span>{dest.time}</span>
+                  <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                  <span>{dest.price}</span>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 // ===== PAGE PRINCIPALE =====
 export default function Home() {
   const [authMode, setAuthMode] = useState<"login" | "signup" | null>(null);
@@ -501,10 +894,6 @@ export default function Home() {
     const timer = window.setInterval(() => setActiveSlide((slide) => (slide + 1) % heroSlides.length), 5000);
     return () => window.clearInterval(timer);
   }, []);
-
-  const moveSlide = (direction: number) => {
-    setActiveSlide((slide) => (slide + direction + heroSlides.length) % heroSlides.length);
-  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -641,6 +1030,9 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ===== SECTION TRAJET GOMA → BUKAVU ===== */}
+        <RouteSection onAuth={(mode) => setAuthMode(mode)} />
+
         {/* ===== MAP SECTION ===== */}
         <section className="py-12 sm:py-16 md:py-20 px-4 sm:px-6 lg:px-8" id="carte">
           <div className="max-w-7xl mx-auto">
@@ -715,7 +1107,6 @@ export default function Home() {
               >
                 <div className="relative w-full max-w-md">
                   <div className="relative aspect-square">
-                    {/* Soleil */}
                     <motion.div
                       className="absolute top-4 sm:top-8 right-4 sm:right-8 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-amber-300 to-orange-400 rounded-full shadow-2xl shadow-amber-300/30"
                       animate={{
@@ -729,7 +1120,6 @@ export default function Home() {
                       transition={{ duration: 3, repeat: Infinity }}
                     />
 
-                    {/* Nuages */}
                     <motion.div
                       className="absolute top-8 sm:top-12 left-4 sm:left-8 flex gap-1 sm:gap-2 opacity-60"
                       animate={{ x: [0, 10, 0] }}
@@ -739,7 +1129,6 @@ export default function Home() {
                       <div className="w-6 h-3 sm:w-8 sm:h-5 bg-white/60 rounded-full blur-sm" />
                     </motion.div>
 
-                    {/* Montagnes */}
                     <div className="absolute bottom-24 sm:bottom-32 left-0 right-0 h-16 sm:h-24">
                       <svg viewBox="0 0 400 100" className="w-full h-full">
                         <polygon points="0,100 40,20 80,100" fill="rgba(100, 116, 139, 0.3)" />
@@ -750,7 +1139,6 @@ export default function Home() {
                       </svg>
                     </div>
 
-                    {/* Eau */}
                     <div className="absolute bottom-0 left-0 right-0 h-1/2 overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-t from-blue-600/20 via-blue-500/10 to-transparent" />
                       <motion.div
@@ -770,7 +1158,6 @@ export default function Home() {
                       />
                     </div>
 
-                    {/* Navire */}
                     <motion.div
                       className="absolute bottom-1/3 left-1/2 -translate-x-1/2"
                       animate={{
@@ -787,7 +1174,6 @@ export default function Home() {
                       </div>
                     </motion.div>
 
-                    {/* Labels */}
                     <div className="absolute bottom-16 sm:bottom-20 left-2 flex flex-col items-center">
                       <div className="w-1.5 h-5 sm:w-2 sm:h-8 bg-gradient-to-b from-gray-600 to-gray-700 rounded-full" />
                       <span className="text-[6px] sm:text-[8px] text-gray-500 font-medium mt-0.5 sm:mt-1">Goma</span>
@@ -797,7 +1183,6 @@ export default function Home() {
                       <span className="text-[6px] sm:text-[8px] text-gray-500 font-medium mt-0.5 sm:mt-1">Bukavu</span>
                     </div>
 
-                    {/* Trajectoire */}
                     <motion.div
                       className="absolute"
                       style={{ bottom: '30%', left: '15%', right: '15%' }}
@@ -842,6 +1227,51 @@ export default function Home() {
                 >
                   <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">{stat.value}</p>
                   <p className="text-[10px] sm:text-xs md:text-sm text-gray-500 mt-0.5">{stat.label}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ===== POURQUOI KIVUPORT ===== */}
+        <section className="py-20 bg-white">
+          <div className="max-w-7xl mx-auto px-4">
+            <motion.div
+              className="text-center max-w-3xl mx-auto mb-16"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full text-blue-600 text-sm font-medium mb-4">
+                <Sparkles size={16} />
+                Pourquoi nous choisir
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900">Des raisons de nous faire confiance</h2>
+              <p className="text-gray-600 mt-2">Une expérience maritime pensée pour vous</p>
+            </motion.div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {benefits.map((benefit, index) => (
+                <motion.div
+                  key={benefit.title}
+                  className="text-center p-6 bg-gray-50 rounded-2xl hover:shadow-xl transition-all border border-gray-100"
+                  whileHover={{ y: -8 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    benefit.color === 'blue' ? 'bg-blue-50 text-blue-600' :
+                    benefit.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' :
+                    benefit.color === 'purple' ? 'bg-purple-50 text-purple-600' :
+                    'bg-amber-50 text-amber-600'
+                  }`}>
+                    <benefit.icon size={28} />
+                  </div>
+                  <h3 className="font-semibold text-gray-900">{benefit.title}</h3>
+                  <p className="text-sm text-gray-500 mt-1">{benefit.description}</p>
                 </motion.div>
               ))}
             </div>

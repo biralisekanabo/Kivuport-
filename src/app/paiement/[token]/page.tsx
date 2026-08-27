@@ -44,7 +44,6 @@ type PaymentMethod = "maisha_pay" | "card" | "orange_money" | "vodacom" | "airte
 function detectOperator(phoneNumber: string): { operator: string; color: string; bg: string; border: string; icon: string; prefix: string } | null {
   const cleaned = phoneNumber.replace(/\s/g, "");
   
-  // Patterns pour les opérateurs
   const operators = [
     { 
       name: "Orange Money", 
@@ -179,6 +178,8 @@ function MethodCard({
 export default function PublicPaymentPage() {
   const { token } = useParams<{ token: string }>();
   const router = useRouter();
+  
+  // États
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"info" | "success" | "error">("info");
   const [isPaying, setIsPaying] = useState(false);
@@ -196,12 +197,23 @@ export default function PublicPaymentPage() {
   const [clientEmail, setClientEmail] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [countdown, setCountdown] = useState(0);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [tokenValid, setTokenValid] = useState(true);
+  const [tokenExpired, setTokenExpired] = useState(false);
+  const [alreadyPaid, setAlreadyPaid] = useState(false);
 
   const receiptUrl = useMemo(() => {
     if (!token) return "";
     return `/api/payments/receipt?token=${encodeURIComponent(String(token))}`;
   }, [token]);
+
+  // ===== VALIDATION TÉLÉPHONE =====
+  function validatePhone(phone: string): boolean {
+    const cleaned = phone.replace(/\s/g, "");
+    if (cleaned.startsWith("243") && cleaned.length === 12) return true;
+    if (cleaned.startsWith("0") && cleaned.length === 10) return true;
+    return false;
+  }
 
   // ===== CHARGEMENT =====
   useEffect(() => {
@@ -209,26 +221,59 @@ export default function PublicPaymentPage() {
       setIsLoading(true);
       try {
         const response = await fetch(`/api/payments/details?token=${encodeURIComponent(String(token))}`);
-        if (response.ok) {
-          const data = await response.json();
-          setAmount(data.amount || 0);
-          setReference(data.reference || `KP-${String(data.id || 0).padStart(4, "0")}`);
-          setDestination(data.destination || "Goma - Bukavu");
-          setClientName(data.client_name || "Client");
-          setClientEmail(data.client_email || "client@email.com");
-          setMessage(`Bonjour ${data.client_name || ""}, veuillez régler votre réservation.`);
-        } else {
-          setMessage("Impossible de charger les détails du paiement.");
+        const data = await response.json();
+
+        if (!response.ok) {
+          // Gestion des erreurs
+          if (response.status === 404) {
+            setMessage("❌ Lien de paiement invalide ou réservation introuvable.");
+            setTokenValid(false);
+          } else if (data.expired) {
+            setMessage("⏰ Ce lien de paiement a expiré (24h). Contactez le support.");
+            setTokenExpired(true);
+            setTokenValid(false);
+          } else if (data.alreadyPaid) {
+            setMessage("✅ Cette réservation est déjà payée.");
+            setPaymentCompleted(true);
+            setAlreadyPaid(true);
+            setMessageType("success");
+            setTokenValid(true);
+          } else {
+            setMessage(data.error || "Une erreur est survenue.");
+            setTokenValid(false);
+          }
           setMessageType("error");
+          setIsLoading(false);
+          return;
         }
+
+        // Succès - mettre à jour les données
+        setAmount(data.amount || 0);
+        setReference(data.reference || `KP-${String(data.id || 0).padStart(4, "0")}`);
+        setDestination(data.destination || "Goma - Bukavu");
+        setClientName(data.client_name || "Client");
+        setClientEmail(data.client_email || "client@email.com");
+        setAttempts(data.attempts || 0);
+        setTokenValid(true);
+        
+        if (data.statut !== 'arrive') {
+          setMessage(`Bonjour ${data.client_name || ""}, veuillez régler votre réservation.`);
+          setMessageType("info");
+        }
+
       } catch (error) {
+        console.error("Erreur chargement:", error);
         setMessage("Une erreur est survenue lors du chargement.");
         setMessageType("error");
+        setTokenValid(false);
       } finally {
         setIsLoading(false);
       }
     }
-    loadPaymentDetails();
+
+    if (token) {
+      loadPaymentDetails();
+    }
   }, [token]);
 
   // ===== COUNTDOWN =====
@@ -237,30 +282,62 @@ export default function PublicPaymentPage() {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     }
-    if (paymentCompleted && countdown === 0) {
+    if (paymentCompleted && countdown === 0 && !alreadyPaid) {
       const timer = setTimeout(() => {
         router.push("/dashboard");
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [paymentCompleted, countdown, router]);
+  }, [paymentCompleted, countdown, router, alreadyPaid]);
 
   // ===== PAIEMENT =====
   async function pay(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const isMobileMoney = ["maisha_pay", "orange_money", "vodacom", "airtel_money"].includes(method);
-    
-    if (isMobileMoney && !phone.trim()) {
-      setMessage("Saisissez votre numéro de téléphone.");
+    if (!tokenValid) {
+      setMessage("❌ Ce lien de paiement n'est plus valide.");
       setMessageType("error");
       return;
     }
 
-    if (method === "card" && (!cardNumber.trim() || !cardExpiry.trim() || !cardCvv.trim() || !cardName.trim())) {
-      setMessage("Complétez toutes les informations de votre carte.");
-      setMessageType("error");
-      return;
+    const isMobileMoney = ["maisha_pay", "orange_money", "vodacom", "airtel_money"].includes(method);
+    
+    // Validation téléphone
+    if (isMobileMoney) {
+      if (!phone.trim()) {
+        setMessage("📱 Saisissez votre numéro de téléphone.");
+        setMessageType("error");
+        return;
+      }
+      if (!validatePhone(phone)) {
+        setMessage("📱 Numéro invalide. Format: +243 99 123 4567");
+        setMessageType("error");
+        return;
+      }
+    }
+
+    // Validation carte
+    if (method === "card") {
+      if (!cardNumber.trim() || cardNumber.replace(/\s/g, '').length < 16) {
+        setMessage("💳 Numéro de carte invalide.");
+        setMessageType("error");
+        return;
+      }
+      if (!cardExpiry.trim() || cardExpiry.length < 5) {
+        setMessage("💳 Date d'expiration invalide.");
+        setMessageType("error");
+        return;
+      }
+      if (!cardCvv.trim() || cardCvv.length < 3) {
+        setMessage("💳 CVV invalide.");
+        setMessageType("error");
+        return;
+      }
+      if (!cardName.trim() || cardName.length < 2) {
+        setMessage("💳 Nom du titulaire requis.");
+        setMessageType("error");
+        return;
+      }
     }
 
     setIsPaying(true);
@@ -271,28 +348,46 @@ export default function PublicPaymentPage() {
       const response = await fetch("/api/payments/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, method, phone, cardNumber, cardExpiry, cardCvv, cardName }),
+        body: JSON.stringify({ 
+          token, 
+          method, 
+          phone, 
+          cardNumber, 
+          cardExpiry, 
+          cardCvv, 
+          cardName 
+        }),
       });
-      const result = await response.json().catch(() => null) as { error?: string; alreadyPaid?: boolean } | null;
+      
+      const result = await response.json();
 
       if (!response.ok) {
         setPaymentCompleted(false);
         setMessage(result?.error || "Le paiement a échoué.");
         setMessageType("error");
         setIsPaying(false);
+        
+        // Mettre à jour les tentatives si fournies
+        if (result?.attempts) {
+          setAttempts(result.attempts);
+        }
         return;
       }
 
+      // Succès
       setPaymentCompleted(true);
-      setShowSuccess(true);
       setCountdown(5);
-      setMessage(
-        result?.alreadyPaid
-          ? "✅ Cette réservation est déjà payée. Vous pouvez télécharger le reçu."
-          : "✅ Paiement enregistré avec succès ! Votre reçu est prêt."
-      );
+      
+      if (result?.alreadyPaid) {
+        setAlreadyPaid(true);
+        setMessage("✅ Cette réservation est déjà payée. Vous pouvez télécharger le reçu.");
+      } else {
+        setMessage(`✅ Paiement enregistré avec succès ! Référence: ${result.reference || reference}`);
+      }
       setMessageType("success");
+
     } catch (error) {
+      console.error("Erreur paiement:", error);
       setMessage("Une erreur est survenue lors du paiement.");
       setMessageType("error");
     } finally {
@@ -383,6 +478,36 @@ export default function PublicPaymentPage() {
     );
   }
 
+  // ===== TOKEN INVALIDE =====
+  if (!tokenValid && !paymentCompleted) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50/30 px-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 text-center"
+        >
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle size={40} className="text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            {tokenExpired ? "Lien expiré" : "Lien invalide"}
+          </h2>
+          <p className="text-gray-500 text-sm mb-6">{message}</p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors"
+          >
+            <ArrowLeft size={16} />
+            Retour à l'accueil
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ===== RENDU PRINCIPAL =====
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-4 sm:py-6 md:py-10 px-3 sm:px-4 md:px-6">
       {/* ===== HEADER ===== */}
@@ -462,6 +587,11 @@ export default function PublicPaymentPage() {
                 <Mail size={14} className="text-gray-400" />
                 <span className="text-sm text-gray-600">{clientEmail || "client@email.com"}</span>
               </div>
+              {attempts > 0 && (
+                <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                  Tentative {attempts}/3
+                </div>
+              )}
             </motion.div>
 
             {/* Message */}
@@ -503,9 +633,11 @@ export default function PublicPaymentPage() {
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <CheckCircle size={32} className="sm:w-[40px] sm:h-[40px] text-emerald-600" />
                 </div>
-                <p className="text-sm text-gray-500">
-                  Redirection dans <strong>{countdown}</strong> secondes...
-                </p>
+                {!alreadyPaid && (
+                  <p className="text-sm text-gray-500">
+                    Redirection dans <strong>{countdown}</strong> secondes...
+                  </p>
+                )}
                 {receiptUrl && (
                   <a
                     href={receiptUrl}
@@ -516,6 +648,15 @@ export default function PublicPaymentPage() {
                     <Download size={14} className="sm:w-[16px] sm:h-[16px]" />
                     Télécharger le reçu PDF
                   </a>
+                )}
+                {alreadyPaid && (
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 mt-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-blue-500/25 text-sm"
+                  >
+                    <ArrowLeft size={14} />
+                    Retour au tableau de bord
+                  </Link>
                 )}
               </motion.div>
             )}
@@ -562,7 +703,7 @@ export default function PublicPaymentPage() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
                           <Phone size={14} className="inline mr-1.5 text-blue-500" />
-                          Numéro de téléphone
+                          Numéro de téléphone *
                         </label>
                         <div className="relative">
                           <input
@@ -602,7 +743,7 @@ export default function PublicPaymentPage() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
                           <CreditCard size={14} className="inline mr-1.5 text-blue-500" />
-                          Numéro de carte
+                          Numéro de carte *
                         </label>
                         <input
                           value={cardNumber}
@@ -614,7 +755,7 @@ export default function PublicPaymentPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1.5">Expiration</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">Expiration *</label>
                           <input
                             value={cardExpiry}
                             onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
@@ -624,7 +765,7 @@ export default function PublicPaymentPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1.5">CVV</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">CVV *</label>
                           <input
                             value={cardCvv}
                             onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 3))}
@@ -638,7 +779,7 @@ export default function PublicPaymentPage() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
                           <User size={14} className="inline mr-1.5 text-blue-500" />
-                          Titulaire de la carte
+                          Titulaire de la carte *
                         </label>
                         <input
                           value={cardName}
