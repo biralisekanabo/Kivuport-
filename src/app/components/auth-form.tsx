@@ -75,13 +75,23 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     }
 
     setForgotState("loading");
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(mail, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (resetError) {
+    let response: Response;
+    try {
+      response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: mail, origin: window.location.origin }),
+      });
+    } catch {
       setForgotState("idle");
-      setForgotError(resetError.message);
+      setForgotError("Impossible de contacter le serveur. Réessayez dans un instant.");
+      return;
+    }
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setForgotState("idle");
+      setForgotError(data.error || "Une erreur est survenue. Réessayez.");
       return;
     }
 

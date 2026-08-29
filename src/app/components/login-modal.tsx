@@ -287,17 +287,25 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
     if (isResetMode) {
       setIsSubmitting(true);
       setStep("checking");
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        email.trim(),
-        {
-          redirectTo: `${window.location.origin}/reset-password`,
-        }
-      );
+      let response: Response;
+      try {
+        response = await fetch("/api/auth/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), origin: window.location.origin }),
+        });
+      } catch {
+        setIsSubmitting(false);
+        setStep("idle");
+        setError("Impossible de contacter le serveur. Réessayez dans un instant.");
+        return;
+      }
       setIsSubmitting(false);
       setStep("idle");
 
-      if (resetError) {
-        setError(getFriendlyErrorMessage(resetError.message));
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(typeof data.error === "string" ? data.error : "Une erreur est survenue. Réessayez.");
         return;
       }
 
