@@ -489,14 +489,14 @@ export function Chatbot() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-2 right-2 z-50 sm:bottom-6 sm:right-6">
       <AnimatePresence>
         {open && (
           <motion.div
-            className={`mb-3 flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-2xl shadow-black/15 backdrop-blur-sm ${
+            className={`flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-2xl shadow-black/15 backdrop-blur-sm ${
               isMinimized
-                ? "h-14 w-80"
-                : "h-[min(680px,calc(100vh-140px))] w-[min(440px,calc(100vw-32px))]"
+                ? "w-[calc(100vw-16px)] max-w-80 h-14 sm:w-80"
+                : "h-[calc(100dvh-16px)] w-[calc(100vw-16px)] sm:h-[min(680px,calc(100vh-140px))] sm:w-[440px]"
             }`}
             variants={containerVariants}
             initial="hidden"
@@ -963,7 +963,7 @@ export function Chatbot() {
           setOpen(!open);
           if (!open) setIsMinimized(false);
         }}
-        className="relative flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-5 py-3.5 font-semibold text-white shadow-2xl shadow-blue-500/40 transition-all"
+        className="relative flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-3.5 py-3 font-semibold text-white shadow-2xl shadow-blue-500/40 transition-all sm:px-5 sm:py-3.5"
         variants={buttonVariants}
         initial="idle"
         whileHover="hover"
