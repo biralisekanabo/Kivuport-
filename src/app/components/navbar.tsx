@@ -97,7 +97,7 @@ export function Navbar({ onLogin, onSignup, isAuthenticated = false, user = null
   // ===== LIENS DE NAVIGATION =====
   const navItems = [
     { label: "Accueil", href: "/", icon: Home },
-    { label: "Destinations", href: "/#destinations", icon: Compass },
+    { label: "Destinations", href: "/#carte", icon: Compass },
     { label: "Services", href: "/#services", icon: Anchor },
     { label: "À propos", href: "/about", icon: Info },
   ];

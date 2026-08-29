@@ -6,11 +6,14 @@ import { FormEvent, useState } from "react";
 import { useEffect } from "react";
 import {
   ArrowRight,
-  LockKeyhole,
+  CheckCircle2,
+  KeyRound,
   LoaderCircle,
+  LockKeyhole,
   Mail,
   Ship,
   UserRound,
+  X,
 } from "lucide-react";
 import { isAdminEmail } from "@/lib/admin";
 import { supabase } from "@/lib/supabase-browser";
@@ -29,10 +32,61 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
+  // ===== MODAL "MOT DE PASSE OUBLIÉ" =====
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotState, setForgotState] = useState<"idle" | "loading" | "sent">("idle");
+  const [forgotError, setForgotError] = useState("");
+
   useEffect(() => {
     if (error) toast.error(error);
     if (notice) toast.info(notice);
   }, [error, notice]);
+
+  // Fermer le modal avec la touche Échap
+  useEffect(() => {
+    if (!showForgot) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeForgot();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showForgot]);
+
+  function openForgot() {
+    setForgotEmail(email.trim());
+    setForgotError("");
+    setForgotState("idle");
+    setShowForgot(true);
+  }
+
+  function closeForgot() {
+    setShowForgot(false);
+  }
+
+  async function handleForgotSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setForgotError("");
+
+    const mail = forgotEmail.trim();
+    if (!mail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
+      setForgotError("Veuillez saisir une adresse email valide.");
+      return;
+    }
+
+    setForgotState("loading");
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(mail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (resetError) {
+      setForgotState("idle");
+      setForgotError(resetError.message);
+      return;
+    }
+
+    setForgotState("sent");
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -130,7 +184,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               {isSignup && <label className="auth-field"><span>Nom complet</span><span className="auth-input-wrap"><UserRound size={17} /><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Jean Mukendi" autoComplete="name" required /></span></label>}
               <label className="auth-field"><span>Adresse email</span><span className="auth-input-wrap"><Mail size={17} /><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="vous@exemple.com" autoComplete="email" required /></span></label>
               <label className="auth-field"><span>Mot de passe</span><span className="auth-input-wrap"><LockKeyhole size={17} /><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="6 caractères minimum" autoComplete={isSignup ? "new-password" : "current-password"} required /></span></label>
-              {!isSignup && <div className="text-right"><span className="text-xs font-semibold text-[#7894d7]">Mot de passe oublié ?</span></div>}
+              {!isSignup && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={openForgot}
+                    className="text-xs font-semibold text-[#7894d7] transition hover:text-[#537bd1] hover:underline"
+                  >
+                    Mot de passe oublié ?
+                  </button>
+                </div>
+              )}
               {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{error}</p>}
               {notice && <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700" role="status">{notice}</p>}
               <button type="submit" className="auth-submit flex w-full items-center justify-center gap-2 rounded-lg px-5 py-3.5 font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting}>{isSubmitting ? <LoaderCircle size={18} className="animate-spin" /> : <>{isSignup ? "Créer mon compte" : "Se connecter"}<ArrowRight size={17} /></>}</button>
@@ -142,6 +206,108 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           </div>
         </section>
       </div>
+
+      {showForgot && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeForgot();
+          }}
+          role="presentation"
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-md rounded-2xl bg-white p-8 shadow-[0_24px_70px_rgba(42,61,102,0.3)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="forgot-title"
+          >
+            <button
+              type="button"
+              onClick={closeForgot}
+              aria-label="Fermer"
+              className="absolute right-4 top-4 grid size-8 place-items-center rounded-lg text-[#8992a1] transition hover:bg-gray-100 hover:text-[#182238]"
+            >
+              <X size={18} />
+            </button>
+
+            {forgotState === "sent" ? (
+              <div className="text-center">
+                <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+                  <CheckCircle2 size={26} />
+                </div>
+                <h3 id="forgot-title" className="text-xl font-bold text-[#182238]">Email envoyé</h3>
+                <p className="mt-2 text-sm leading-6 text-[#8992a1]">
+                  Un lien de réinitialisation a été envoyé à{" "}
+                  <span className="font-semibold text-[#182238]">{forgotEmail}</span>.
+                  Vérifiez votre boîte mail (pensez aussi aux spam) puis cliquez sur le lien pour choisir un nouveau mot de passe.
+                </p>
+                <button
+                  type="button"
+                  onClick={closeForgot}
+                  className="mt-6 w-full rounded-lg bg-[#537bd1] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#4068c2]"
+                >
+                  Fermer
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-blue-50 text-blue-600">
+                  <KeyRound size={26} />
+                </div>
+                <h3 id="forgot-title" className="text-xl font-bold text-[#182238]">Mot de passe oublié</h3>
+                <p className="mt-2 text-sm leading-6 text-[#8992a1]">
+                  Saisissez votre adresse email. Nous vous enverrons un lien sécurisé pour réinitialiser votre mot de passe.
+                </p>
+
+                <form onSubmit={handleForgotSubmit} className="mt-6 space-y-4">
+                  <label className="auth-field">
+                    <span>Adresse email</span>
+                    <span className="auth-input-wrap">
+                      <Mail size={17} />
+                      <input
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(event) => setForgotEmail(event.target.value)}
+                        placeholder="vous@exemple.com"
+                        autoComplete="email"
+                        autoFocus
+                        required
+                      />
+                    </span>
+                  </label>
+
+                  {forgotError && (
+                    <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+                      {forgotError}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={forgotState === "loading"}
+                    className="auth-submit flex w-full items-center justify-center gap-2 rounded-lg px-5 py-3.5 font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {forgotState === "loading" ? (
+                      <LoaderCircle size={18} className="animate-spin" />
+                    ) : (
+                      <>Envoyer le lien<ArrowRight size={17} /></>
+                    )}
+                  </button>
+                </form>
+
+                <button
+                  type="button"
+                  onClick={closeForgot}
+                  className="mt-4 w-full rounded-lg border border-gray-200 px-5 py-3 text-sm font-semibold text-[#8992a1] transition hover:bg-gray-50 hover:text-[#182238]"
+                >
+                  Retour à la connexion
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

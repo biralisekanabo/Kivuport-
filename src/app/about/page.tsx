@@ -38,6 +38,15 @@ import { PublicLayout } from "@/app/components/public-layout";
 import Link from "next/link";
 import { useState, useRef } from "react";
 
+const backgroundParticles = Array.from({ length: 20 }, (_, index) => ({
+  id: index,
+  size: 2 + ((index * 17) % 5),
+  left: (index * 47) % 100,
+  top: (index * 73) % 100,
+  duration: 5 + ((index * 13) % 10),
+  delay: (index * 19) % 5,
+}));
+
 // ===== ICÔNES RÉSEAUX SOCIAUX PERSONNALISÉES =====
 function GithubIcon({ size = 18 }: { size?: number }) {
   return (
@@ -440,15 +449,15 @@ export default function AboutPage() {
             transition={{ duration: 6, repeat: Infinity, delay: 2 }}
           />
           
-          {[...Array(20)].map((_, i) => (
+          {backgroundParticles.map((particle) => (
             <motion.div
-              key={i}
+              key={particle.id}
               className="absolute rounded-full bg-white/5"
               style={{
-                width: Math.random() * 6 + 2,
-                height: Math.random() * 6 + 2,
-                left: Math.random() * 100 + "%",
-                top: Math.random() * 100 + "%",
+                width: particle.size,
+                height: particle.size,
+                left: `${particle.left}%`,
+                top: `${particle.top}%`,
               }}
               animate={{
                 y: [0, -50, 0],
@@ -456,9 +465,9 @@ export default function AboutPage() {
                 opacity: [0, 0.6, 0],
               }}
               transition={{
-                duration: 5 + Math.random() * 10,
+                duration: particle.duration,
                 repeat: Infinity,
-                delay: Math.random() * 5,
+                delay: particle.delay,
               }}
             />
           ))}
@@ -660,9 +669,9 @@ export default function AboutPage() {
               Notre histoire
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
-              L'aventure <span className="text-blue-600">KivuPort</span>
+              L&apos;aventure <span className="text-blue-600">KivuPort</span>
             </h2>
-            <p className="mt-2 text-gray-600">De l'idée à la réalisation, découvrez notre parcours</p>
+            <p className="mt-2 text-gray-600">De l&apos;idée à la réalisation, découvrez notre parcours</p>
           </motion.div>
 
           <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -738,7 +747,7 @@ export default function AboutPage() {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-full text-blue-600 text-sm font-medium mb-4">
               <Users size={16} />
-              L'équipe
+              L&apos;équipe
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
               Derrière <span className="text-blue-600">KivuPort</span>
@@ -819,7 +828,7 @@ export default function AboutPage() {
               Nous sommes là pour <span className="text-blue-600">vous aider</span>
             </h2>
             <p className="mt-2 text-gray-600">
-              Une question, une suggestion ou un problème ? N'hésitez pas à nous contacter.
+              Une question, une suggestion ou un problème ? N&apos;hésitez pas à nous contacter.
             </p>
           </motion.div>
 
