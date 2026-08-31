@@ -35,14 +35,14 @@ export async function POST(request: Request) {
     }
 
     const code = generateOtp();
-    storeOtp(normalizedEmail, code);
+    await storeOtp(normalizedEmail, code);
 
     await sendBrevoEmail({
       to: [{ email: normalizedEmail }],
       subject: `Votre code de vérification KivuPort : ${code}`,
       textContent:
         `Votre code de vérification est : ${code}\n\n` +
-        `Ce code est valable pendant 60 secondes.\n\n` +
+        `Ce code est valable pendant 5 minutes.\n\n` +
         `Si vous n'avez pas demandé la réinitialisation de votre mot de passe, ignorez cet email.\n\n` +
         `KivuPort — Port de Goma`,
       htmlContent: otpEmail(code),

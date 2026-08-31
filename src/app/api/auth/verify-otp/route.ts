@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Le code doit contenir 6 chiffres." }, { status: 400 });
   }
 
-  const verified = checkOtp(email.trim().toLowerCase(), code.trim());
+  const verified = await checkOtp(email.trim().toLowerCase(), code.trim());
 
   if (!verified) {
     return NextResponse.json({ error: "Code invalide ou expiré. Veuillez demander un nouveau code." }, { status: 400 });

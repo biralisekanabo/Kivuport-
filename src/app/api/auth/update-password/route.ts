@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  if (!consumeOtp(normalizedEmail, code.trim())) {
+  if (!(await consumeOtp(normalizedEmail, code.trim()))) {
     return NextResponse.json({ error: "Code invalide ou expiré. Veuillez demander un nouveau code." }, { status: 400 });
   }
 

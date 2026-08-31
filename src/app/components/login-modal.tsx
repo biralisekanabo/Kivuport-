@@ -582,7 +582,7 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4"
             role="presentation"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) closeForgot();
@@ -594,7 +594,7 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", duration: 0.4 }}
-              className="relative w-full max-w-[430px] rounded-[2rem] border-[3px] border-[#7bd7f8] bg-[#eaf0f2] p-4 shadow-[0_24px_70px_rgba(42,61,102,0.25)]"
+              className="relative w-full max-w-[430px] rounded-[2rem] border-[3px] border-[#7bd7f8] bg-[#eaf0f2] p-2 shadow-[0_24px_70px_rgba(42,61,102,0.25)] sm:p-4"
               role="dialog"
               aria-modal="true"
               aria-labelledby="forgot-title"
@@ -690,18 +690,18 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
                     <div className="mb-3 grid size-12 place-items-center rounded-full border border-[#dfeaf1] bg-[#eef4f7] shadow-[inset_0_2px_7px_rgba(255,255,255,0.8),0_10px_18px_rgba(15,23,42,0.08)] sm:mb-5 sm:size-16">
                       <ShieldCheck className="text-[#1d4d5f]" size={22} />
                     </div>
-                    <h3 id="forgot-title" className="text-center text-[2rem] font-black leading-[0.9] tracking-[-0.08em] text-slate-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.8)] sm:text-[2.5rem]">
-                      Verify Your OTP
+                    <h3 id="forgot-title" className="text-center text-[1.6rem] font-black leading-[0.95] tracking-[-0.08em] text-slate-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.8)] sm:text-[2.5rem]">
+                      Vérifiez votre code
                     </h3>
-                    <p className="mt-3 text-[1rem] text-slate-500 text-center sm:mt-5 sm:text-[1.05rem]">
-                      We&apos;ve sent a 6-digit verification code to
+                    <p className="mt-2 text-[0.9rem] text-slate-500 text-center sm:mt-5 sm:text-[1.05rem]">
+                      Nous avons envoyé un code à 6 chiffres à
                     </p>
-                    <p className="mt-1 text-[1rem] font-semibold tracking-[0.1em] text-slate-700 sm:text-[1.05rem]">
-                      +91 XXXXX 00945
+                    <p className="mt-0.5 max-w-full truncate text-[0.9rem] font-semibold tracking-[0.06em] text-slate-700 sm:mt-1 sm:text-[1.05rem]">
+                      {forgotEmail}
                     </p>
                   </div>
 
-                  <div className="mt-4 flex justify-center gap-1.5 sm:mt-6 sm:gap-2.5">
+                  <div className="mt-4 grid w-full grid-cols-6 gap-1.5 sm:mt-6 sm:gap-2.5">
                     {otpDigits.map((digit, i) => (
                       <input
                         key={i}
@@ -713,7 +713,7 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
                         onChange={(e) => handleOtpChange(i, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(i, e)}
                         onPaste={handleOtpPaste}
-                        className="h-11 w-11 rounded-[1rem] border-2 border-[#dfe6ec] bg-[#edf2f5] text-center text-xl font-bold text-slate-700 shadow-[inset_0_3px_5px_rgba(15,23,42,0.04)] outline-none transition-all duration-200 focus:border-[#5ecaf6] focus:bg-white focus:shadow-[0_0_0_3px_rgba(94,202,246,0.18)] sm:h-14 sm:w-14 sm:rounded-[1.2rem] sm:text-2xl"
+                        className="h-12 w-full rounded-xl border-2 border-[#dfe6ec] bg-[#edf2f5] text-center text-xl font-bold text-slate-700 shadow-[inset_0_3px_5px_rgba(15,23,42,0.04)] outline-none transition-all duration-200 focus:border-[#5ecaf6] focus:bg-white focus:shadow-[0_0_0_3px_rgba(94,202,246,0.18)] sm:h-14 sm:rounded-[1.2rem] sm:text-2xl"
                         aria-label={`Chiffre ${i + 1}`}
                       />
                     ))}
@@ -736,7 +736,7 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
                     ) : (
                       <>
                         <ShieldCheck size={17} />
-                        Verify OTP
+                        Vérifier le code
                       </>
                     )}
                   </button>
@@ -744,7 +744,7 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
                   <div className="mt-5 text-center">
                     {otpResendSeconds > 0 ? (
                       <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
-                        Resend OTP in{" "}
+                        Renvoyer dans{" "}
                         <span className="font-bold text-slate-600">{otpResendSeconds}s</span>
                       </p>
                     ) : (
@@ -755,7 +755,7 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
                         className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#0ea5e9] transition-colors hover:text-[#0284c7]"
                       >
                         <RotateCw size={12} />
-                        Resend OTP
+                        Renvoyer le code
                       </button>
                     )}
                   </div>
@@ -766,7 +766,7 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
                     className="mt-5 flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white/40 px-5 py-2.5 text-xs font-semibold text-slate-500 transition hover:bg-white/70 hover:text-slate-700"
                   >
                     <ArrowLeft size={12} />
-                    Change email
+                    Changer d&apos;email
                   </button>
                 </motion.div>
               )}

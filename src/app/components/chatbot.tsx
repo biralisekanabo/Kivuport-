@@ -496,7 +496,7 @@ export function Chatbot() {
             className={`mx-auto flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-2xl shadow-black/15 backdrop-blur-sm ${
               isMinimized
                 ? "w-[min(100%,20rem)] max-w-[20rem] h-14 sm:w-80"
-                : "h-[calc(100dvh-1rem)] w-[min(100%,26rem)] max-w-[26rem] sm:h-[min(680px,calc(100vh-140px))] sm:w-[440px]"
+                : "h-[min(72dvh,60rem)] w-[min(100%,calc(100vw-1rem))] max-w-[26rem] sm:h-[min(680px,calc(100vh-140px))] sm:w-[440px]"
             }`}
             variants={containerVariants}
             initial="hidden"
