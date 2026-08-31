@@ -2873,54 +2873,156 @@ export default function AdminPage() {
   // ===== EXPORT PDF =====
   const exportPDF = async () => {
     if (filteredReservations.length === 0) {
-      toast.warning("Aucune donnée à exporter");
+      toast.warning("Aucune donnée disponible pour générer le rapport demandé");
       return;
     }
+
     try {
       const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
       const pdf = await PDFDocument.create();
       const font = await pdf.embedFont(StandardFonts.Helvetica);
       const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
-      const page = pdf.addPage([595, 842]);
+      const fontItalic = await pdf.embedFont(StandardFonts.HelveticaOblique);
+      const pageWidth = 595;
+      const pageHeight = 842;
       const margin = 40;
-      let y = 800;
 
-      page.drawText("Rapport des réservations - KivuPort", { x: margin, y, size: 18, font: fontBold, color: rgb(0.05, 0.2, 0.5) });
-      y -= 20;
-      page.drawText(`Généré le ${new Date().toLocaleDateString("fr-FR")}`, { x: margin, y, size: 10, font, color: rgb(0.4, 0.4, 0.4) });
-      y -= 30;
+      const reportLabel =
+        periodFilter === "aujourdhui"
+          ? "Rapport du jour"
+          : periodFilter === "semaine"
+            ? "Rapport de la semaine"
+            : periodFilter === "mois"
+              ? "Rapport du mois"
+              : "Rapport global";
+
+      const totalRevenue = filteredReservations.reduce((sum, reservation) => {
+        const raw = String(reservation.amount ?? "0").replace(/[^0-9,.-]/g, "").replace(",", ".");
+        return sum + (Number(raw) || 0);
+      }, 0);
+
+      const confirmed = filteredReservations.filter((r) => r.status === "Confirmée" || r.status === "Payée").length;
+      const pending = filteredReservations.filter((r) => r.status === "En attente").length;
+      const canceled = filteredReservations.filter((r) => r.status === "Annulée").length;
+
+      const addPage = (pageNumber: number, currentY: number) => {
+        const page = pdf.addPage([pageWidth, pageHeight]);
+        page.drawRectangle({ x: 0, y: 0, width: pageWidth, height: pageHeight, color: rgb(0.97, 0.98, 1) });
+        page.drawRectangle({ x: 0, y: 770, width: pageWidth, height: 72, color: rgb(0.04, 0.18, 0.42) });
+        page.drawText("KivuPort", { x: margin, y: 800, size: 22, font: fontBold, color: rgb(1, 1, 1) });
+        page.drawText(reportLabel, { x: margin + 220, y: 804, size: 14, font: fontItalic, color: rgb(0.88, 0.92, 1) });
+        page.drawText(`Généré le ${new Date().toLocaleDateString("fr-FR")}`, {
+          x: margin,
+          y: 782,
+          size: 9,
+          font,
+          color: rgb(0.88, 0.92, 1),
+        });
+
+        page.drawText(`Page ${pageNumber}`, {
+          x: pageWidth - 80,
+          y: 782,
+          size: 9,
+          font,
+          color: rgb(0.88, 0.92, 1),
+        });
+
+        return page;
+      };
+
+      let currentPage = addPage(1, 730);
+      let y = 700;
+
+      const summaryCards = [
+        { label: "Réservations", value: String(filteredReservations.length), color: rgb(0.13, 0.59, 0.95) },
+        { label: "Confirmées", value: String(confirmed), color: rgb(0.21, 0.78, 0.55) },
+        { label: "En attente", value: String(pending), color: rgb(0.98, 0.66, 0.15) },
+        { label: "Montant", value: `${totalRevenue.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} USD`, color: rgb(0.31, 0.35, 0.8) },
+      ];
+
+      summaryCards.forEach((card, index) => {
+        const x = margin + index * 130;
+        currentPage.drawRectangle({ x, y: y - 8, width: 115, height: 54, color: card.color });
+        currentPage.drawText(card.label, { x: x + 10, y: y + 20, size: 8, font: font, color: rgb(1, 1, 1) });
+        currentPage.drawText(card.value, { x: x + 10, y: y + 2, size: 15, font: fontBold, color: rgb(1, 1, 1) });
+      });
+
+      y -= 84;
+      currentPage.drawLine({ start: { x: margin, y }, end: { x: pageWidth - margin, y }, thickness: 1, color: rgb(0.85, 0.85, 0.85) });
+      y -= 18;
 
       const headers = ["Réf", "Client", "Trajet", "Date", "Montant", "Statut"];
-      const colX = [margin, margin + 70, margin + 180, margin + 300, margin + 380, margin + 470];
+      const columnX = [margin, margin + 68, margin + 188, margin + 305, margin + 395, margin + 470];
 
-      headers.forEach((h, i) => {
-        page.drawText(h, { x: colX[i], y, size: 9, font: fontBold });
+      headers.forEach((header, index) => {
+        currentPage.drawText(header, { x: columnX[index], y, size: 9, font: fontBold, color: rgb(0.18, 0.18, 0.18) });
       });
-      y -= 12;
-      page.drawLine({ start: { x: margin, y }, end: { x: margin + 515, y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
       y -= 10;
 
-      for (const r of filteredReservations) {
-        if (y < 60) {
-          y = 800;
+      const headerLineY = y;
+      currentPage.drawLine({ start: { x: margin, y: headerLineY }, end: { x: pageWidth - margin, y: headerLineY }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+      y -= 14;
+
+      for (let i = 0; i < filteredReservations.length; i++) {
+        const reservation = filteredReservations[i];
+        if (y < 90) {
+          const pageNumber = pdf.getPageCount() + 1;
+          currentPage = addPage(pageNumber, 730);
+          y = 700;
+          currentPage.drawText("Suite du rapport", { x: margin, y, size: 12, font: fontBold, color: rgb(0.18, 0.18, 0.18) });
+          y -= 18;
+          currentPage.drawLine({ start: { x: margin, y }, end: { x: pageWidth - margin, y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+          y -= 14;
         }
-        const cells = [r.reference, r.client, r.route, r.date, r.amount, r.status];
-        cells.forEach((c, i) => {
-          page.drawText(String(c).slice(0, 18), { x: colX[i], y, size: 8, font });
+
+        const rowValues = [
+          reservation.reference,
+          reservation.client,
+          reservation.route,
+          reservation.date,
+          reservation.amount,
+          reservation.status,
+        ];
+
+        const fillColor = i % 2 === 0 ? rgb(0.98, 0.99, 1) : rgb(1, 1, 1);
+        currentPage.drawRectangle({ x: margin - 4, y: y - 12, width: pageWidth - (margin * 2) + 8, height: 18, color: fillColor });
+
+        rowValues.forEach((value, index) => {
+          const safeValue = String(value ?? "-").slice(0, index === 1 ? 18 : 22);
+          currentPage.drawText(safeValue, {
+            x: columnX[index],
+            y,
+            size: 7.5,
+            font,
+            color: rgb(0.2, 0.2, 0.2),
+          });
         });
-        y -= 14;
+
+        y -= 18;
       }
+
+      const bottomNote = canceled > 0 ? `Annulées : ${canceled}` : "Aucune réservation annulée";
+      currentPage.drawText(bottomNote, {
+        x: margin,
+        y: 38,
+        size: 8,
+        font: font,
+        color: rgb(0.55, 0.55, 0.55),
+      });
 
       const blob = await pdf.save();
       const url = URL.createObjectURL(new Blob([new Uint8Array(blob)], { type: "application/pdf" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = `kivuport-rapport-${new Date().toISOString().slice(0, 10)}.pdf`;
+      link.download = `kivuport-${reportLabel.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
       link.click();
+      link.remove();
       URL.revokeObjectURL(url);
-      toast.success("Export PDF réalisé avec succès");
-    } catch (err) {
-      toast.error("Erreur lors de la génération du PDF");
+      toast.success("Rapport PDF généré avec succès");
+    } catch (error) {
+      console.error("PDF export error:", error);
+      toast.error("Erreur lors de la génération du rapport PDF");
     }
   };
 
