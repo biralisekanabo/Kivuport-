@@ -254,20 +254,59 @@ export async function POST(request: NextRequest) {
       systemPrompt += `\n\n**STATUT ADMIN:** Tu as accès à toutes les données. Tu aides à l'analyse et à la gestion.`;
     }
 
-    // 8. Construire l'historique pour Gemini
-    const contents = [
-      { role: "user", parts: [{ text: systemPrompt }] },
-      ...history.slice(-20).map((msg) => ({
+    // 8. Construire l'historique pour Gemini (with role alternation)
+    const trimmedHistory = history.slice(-20);
+    const historyEntries = trimmedHistory
+      .filter((msg) => msg.text.trim())
+      .map((msg) => ({
         role: msg.role,
         parts: [{ text: msg.text }]
-      })),
-      { role: "user", parts: [{ text: message }] }
-    ];
+      }));
+
+    // Ensure contents starts with "user" and alternates roles properly
+    const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+
+    // Merge system prompt into the first user message or create first user entry
+    if (historyEntries.length > 0 && historyEntries[0].role === "user") {
+      // First history entry is user — prepend system prompt to it
+      contents.push({
+        role: "user",
+        parts: [{ text: systemPrompt + "\n\n" + historyEntries[0].parts[0].text }]
+      });
+      for (let i = 1; i < historyEntries.length; i++) {
+        contents.push(historyEntries[i]);
+      }
+    } else {
+      // No history or first entry is model — add system prompt as first user message
+      contents.push({ role: "user", parts: [{ text: systemPrompt }] });
+      for (const entry of historyEntries) {
+        contents.push(entry);
+      }
+    }
+
+    // Fix consecutive same-role entries by merging them
+    const mergedContents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+    for (const entry of contents) {
+      if (mergedContents.length > 0 && mergedContents[mergedContents.length - 1].role === entry.role) {
+        mergedContents[mergedContents.length - 1].parts[0].text += "\n\n" + entry.parts[0].text;
+      } else {
+        mergedContents.push({ ...entry });
+      }
+    }
+
+    // Ensure the last message is from "user" (required by Gemini)
+    if (mergedContents.length > 0 && mergedContents[mergedContents.length - 1].role !== "user") {
+      mergedContents.push({ role: "user", parts: [{ text: message }] });
+    } else {
+      // Append the current user message to the last user entry or add it
+      const lastEntry = mergedContents[mergedContents.length - 1];
+      lastEntry.parts[0].text += "\n\n" + message;
+    }
 
     // 9. Appeler Gemini en streaming
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
     const payload = { 
-      contents,
+      contents: mergedContents,
       generationConfig: {
         temperature: 0.3,
         maxOutputTokens: 800,
@@ -289,12 +328,19 @@ export async function POST(request: NextRequest) {
     // 10. Gérer les erreurs de l'API Gemini
     if (!upstream.ok || !upstream.body) {
       const errorData = await upstream.json().catch(() => ({}));
-      console.error("Erreur Gemini:", errorData);
+      console.error("Erreur Gemini:", upstream.status, errorData);
       
       if (upstream.status === 429) {
         return NextResponse.json({ 
           error: "Le service est actuellement surchargé. Veuillez réessayer dans quelques instants." 
         }, { status: 429 });
+      }
+      
+      if (upstream.status === 400) {
+        return NextResponse.json({ 
+          error: "Requête invalide. Veuillez reformuler votre message.",
+          details: errorData?.error?.message || "Bad Request"
+        }, { status: 400 });
       }
       
       return NextResponse.json({ 

@@ -755,7 +755,7 @@ export function Chatbot() {
                               )}
                             </motion.div>
 
-                            <div className={`flex gap-0.5 mt-1 ${message.role === "user" ? "justify-end" : "justify-start"} opacity-0 group-hover:opacity-100 transition-opacity`}>
+                            <div className={`flex gap-0.5 mt-1 ${message.role === "user" ? "justify-end" : "justify-start"} opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity`}>
                               <motion.button
                                 className="p-1 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-blue-600"
                                 whileHover={{ scale: 1.1 }}
@@ -944,9 +944,11 @@ export function Chatbot() {
                       {messages.length} messages
                     </span>
                     <span className="w-px h-3 bg-gray-200" />
-                    <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-[8px] text-gray-500">Ctrl</kbd>
-                    <span className="text-[8px]">+</span>
-                    <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-[8px] text-gray-500">K</kbd>
+                    <span className="hidden items-center gap-1 sm:flex">
+                      <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-[8px] text-gray-500">Ctrl</kbd>
+                      <span className="text-[8px]">+</span>
+                      <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-[8px] text-gray-500">K</kbd>
+                    </span>
                   </div>
                 </div>
               </>

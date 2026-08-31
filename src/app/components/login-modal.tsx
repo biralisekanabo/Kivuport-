@@ -684,24 +684,24 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="rounded-[2rem] border-[3px] border-[#7bd7f8] bg-[#edf1f3] p-5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.38),0_14px_24px_rgba(15,23,42,0.06)]"
+                  className="rounded-[1.5rem] border-[3px] border-[#7bd7f8] bg-[#edf1f3] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.38),0_14px_24px_rgba(15,23,42,0.06)] sm:rounded-[2rem] sm:p-5"
                 >
                   <div className="flex flex-col items-center">
-                    <div className="mb-5 grid size-16 place-items-center rounded-full border border-[#dfeaf1] bg-[#eef4f7] shadow-[inset_0_2px_7px_rgba(255,255,255,0.8),0_10px_18px_rgba(15,23,42,0.08)]">
-                      <ShieldCheck className="text-[#1d4d5f]" size={26} />
+                    <div className="mb-3 grid size-12 place-items-center rounded-full border border-[#dfeaf1] bg-[#eef4f7] shadow-[inset_0_2px_7px_rgba(255,255,255,0.8),0_10px_18px_rgba(15,23,42,0.08)] sm:mb-5 sm:size-16">
+                      <ShieldCheck className="text-[#1d4d5f]" size={22} />
                     </div>
-                    <h3 id="forgot-title" className="text-[2.5rem] font-black leading-[0.9] tracking-[-0.08em] text-slate-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">
+                    <h3 id="forgot-title" className="text-center text-[2rem] font-black leading-[0.9] tracking-[-0.08em] text-slate-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.8)] sm:text-[2.5rem]">
                       Verify Your OTP
                     </h3>
-                    <p className="mt-5 text-[1.05rem] text-slate-500 text-center">
+                    <p className="mt-3 text-[1rem] text-slate-500 text-center sm:mt-5 sm:text-[1.05rem]">
                       We&apos;ve sent a 6-digit verification code to
                     </p>
-                    <p className="mt-1 text-[1.05rem] font-semibold tracking-[0.1em] text-slate-700">
+                    <p className="mt-1 text-[1rem] font-semibold tracking-[0.1em] text-slate-700 sm:text-[1.05rem]">
                       +91 XXXXX 00945
                     </p>
                   </div>
 
-                  <div className="mt-6 flex justify-center gap-2.5">
+                  <div className="mt-4 flex justify-center gap-1.5 sm:mt-6 sm:gap-2.5">
                     {otpDigits.map((digit, i) => (
                       <input
                         key={i}
@@ -713,7 +713,7 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
                         onChange={(e) => handleOtpChange(i, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(i, e)}
                         onPaste={handleOtpPaste}
-                        className="h-14 w-14 rounded-[1.2rem] border-2 border-[#dfe6ec] bg-[#edf2f5] text-center text-2xl font-bold text-slate-700 shadow-[inset_0_3px_5px_rgba(15,23,42,0.04)] outline-none transition-all duration-200 focus:border-[#5ecaf6] focus:bg-white focus:shadow-[0_0_0_3px_rgba(94,202,246,0.18)]"
+                        className="h-11 w-11 rounded-[1rem] border-2 border-[#dfe6ec] bg-[#edf2f5] text-center text-xl font-bold text-slate-700 shadow-[inset_0_3px_5px_rgba(15,23,42,0.04)] outline-none transition-all duration-200 focus:border-[#5ecaf6] focus:bg-white focus:shadow-[0_0_0_3px_rgba(94,202,246,0.18)] sm:h-14 sm:w-14 sm:rounded-[1.2rem] sm:text-2xl"
                         aria-label={`Chiffre ${i + 1}`}
                       />
                     ))}
@@ -872,7 +872,7 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
                   <div className="mx-auto mb-5 grid size-16 place-items-center rounded-full border border-[#d7ebda] bg-[#effaf0] text-[#38c98f] shadow-[inset_0_2px_7px_rgba(255,255,255,0.8),0_10px_18px_rgba(15,23,42,0.08)]">
                     <CheckCircle2 size={38} />
                   </div>
-                  <h3 id="forgot-title" className="text-[2.3rem] font-black leading-[0.95] tracking-[-0.08em] text-[#2f9f8f] drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">
+                  <h3 id="forgot-title" className="text-center text-[2rem] font-black leading-[0.95] tracking-[-0.08em] text-[#2f9f8f] drop-shadow-[0_1px_0_rgba(255,255,255,0.8)] sm:text-[2.3rem]">
                     Verification Successful
                   </h3>
                   <p className="mt-6 text-[1.05rem] text-slate-500 leading-relaxed">
