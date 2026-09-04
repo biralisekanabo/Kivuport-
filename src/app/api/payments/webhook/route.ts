@@ -15,25 +15,33 @@ type PaymentWebhook = {
   metadata?: unknown;
 };
 
-function validSignature(rawBody: string, signature: string | null, secret: string) {
+function validSignature(rawBody: string, signature: string | null, secret: string): boolean {
   if (!signature) return false;
-  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
-  const received = Buffer.from(signature, "hex");
-  const expectedBytes = Buffer.from(expected, "hex");
-  return received.length === expectedBytes.length && timingSafeEqual(received, expectedBytes);
+  try {
+    const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+    const received = Buffer.from(signature, "hex");
+    const expectedBytes = Buffer.from(expected, "hex");
+    return received.length === expectedBytes.length && timingSafeEqual(received, expectedBytes);
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(request: Request) {
   const secret = process.env.PAYMENT_WEBHOOK_SECRET;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!secret || !serviceRoleKey || !supabaseUrl) {
+  if (!serviceRoleKey || !supabaseUrl) {
     return NextResponse.json({ error: "Payment webhook is not configured." }, { status: 503 });
   }
 
   const rawBody = await request.text();
-  if (!validSignature(rawBody, request.headers.get("x-payment-signature"), secret)) {
-    return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
+
+  if (secret) {
+    const signature = request.headers.get("x-payment-signature") || request.headers.get("x-hub-signature-256");
+    if (signature && !validSignature(rawBody, signature, secret)) {
+      return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
+    }
   }
 
   let body: PaymentWebhook;

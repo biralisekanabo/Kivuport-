@@ -1,11 +1,8 @@
-// app/api/payments/token/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { resolveAppUrl } from "@/lib/urls";
 
 export const runtime = "nodejs";
-
-type PaymentMethod = "maisha_pay";
 
 function normalizePhone(phone: string) {
   const digits = phone.replace(/\D/g, "");
@@ -17,7 +14,49 @@ function detectProvider(phone: string) {
   if (["81", "82", "83"].includes(localNumber)) return "MPESA";
   if (["84", "85", "89"].includes(localNumber)) return "ORANGE";
   if (["97", "98", "99"].includes(localNumber)) return "AIRTEL";
+  if (["50", "51", "52", "53", "54", "55", "56", "57", "58", "59"].includes(localNumber)) return "AFRICELL";
   if (["90", "91"].includes(localNumber)) return "AFRICELL";
+  return null;
+}
+
+async function findReservation(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  token: string
+) {
+  // 1. Par token_paiement (flux client)
+  const { data: byToken } = await supabase
+    .from('reservations')
+    .select('id, prix_total, statut, tentative_paiement, token_expire_at, client:client(nom, prenom, email)')
+    .eq('token_paiement', token)
+    .single();
+
+  if (byToken) return byToken as { id: number; prix_total: number; statut: string; tentative_paiement: number; token_expire_at: string | null; client: unknown };
+
+  // 2. Par external_reference (flux email)
+  const { data: byRef } = await supabase
+    .from('payment_transactions' as never)
+    .select('idpaiement')
+    .eq('external_reference', token)
+    .single();
+
+  if (byRef) {
+    const { data: paiement } = await supabase
+      .from('paiements' as never)
+      .select('idreservation')
+      .eq('id', (byRef as { idpaiement: number }).idpaiement)
+      .single();
+    if (paiement) {
+      const reservationId = (paiement as { idreservation: number }).idreservation;
+      const { data: reservation } = await supabase
+        .from('reservations')
+        .select('id, prix_total, statut, tentative_paiement, token_expire_at, client:client(nom, prenom, email)')
+        .eq('id', reservationId)
+        .single();
+      if (reservation) return reservation as { id: number; prix_total: number; statut: string; tentative_paiement: number; token_expire_at: string | null; client: unknown };
+    }
+  }
+
   return null;
 }
 
@@ -36,31 +75,23 @@ export async function POST(request: Request) {
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
 
-    // Trouver la réservation
-    const { data: reservation, error: findError } = await supabase
-      .from('reservations')
-      .select('id, prix_total, statut, tentative_paiement, token_expire_at, client:client(nom, prenom, email)')
-      .eq('token_paiement', token)
-      .single();
+    const reservation = await findReservation(supabase, token);
 
-    if (findError || !reservation) {
+    if (!reservation) {
       return NextResponse.json({ error: "Réservation introuvable" }, { status: 404 });
     }
 
-    // Vérifier si déjà payée
     if (reservation.statut === 'arrive') {
-      return NextResponse.json({ 
+      return NextResponse.json({
         alreadyPaid: true,
         message: "Cette réservation est déjà payée."
       });
     }
 
-    // Vérifier l'expiration
     if (reservation.token_expire_at && new Date() > new Date(reservation.token_expire_at)) {
       return NextResponse.json({ error: "Le lien de paiement a expiré (24h)" }, { status: 400 });
     }
 
-    // KivuPort utilise exclusivement MaishaPay.
     if (method !== "maisha_pay") {
       return NextResponse.json({ error: "Seul MaishaPay est accepté." }, { status: 400 });
     }
@@ -143,9 +174,8 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error("❌ Erreur paiement:", error);
-    return NextResponse.json({ 
-      error: "Une erreur inattendue est survenue" 
+    return NextResponse.json({
+      error: "Une erreur inattendue est survenue"
     }, { status: 500 });
   }
 }

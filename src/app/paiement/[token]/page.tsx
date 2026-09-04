@@ -107,22 +107,29 @@ export default function PublicPaymentPage() {
         if (!response.ok) {
           if (response.status === 404) {
             setMessage("Lien de paiement invalide ou réservation introuvable.");
-            setTokenValid(false);
-          } else if (data.expired) {
-            setMessage("Ce lien de paiement a expiré (24h). Contactez le support.");
-            setTokenExpired(true);
-            setTokenValid(false);
-          } else if (data.alreadyPaid) {
-            setMessage("Cette réservation est déjà payée.");
-            setPaymentCompleted(true);
-            setAlreadyPaid(true);
-            setMessageType("success");
-            setTokenValid(true);
           } else {
             setMessage(data.error || "Une erreur est survenue.");
-            setTokenValid(false);
           }
           setMessageType("error");
+          setTokenValid(false);
+          setIsLoading(false);
+          return;
+        }
+
+        if (data.alreadyPaid) {
+          setMessage("Cette réservation est déjà payée.");
+          setPaymentCompleted(true);
+          setAlreadyPaid(true);
+          setMessageType("success");
+          setIsLoading(false);
+          return;
+        }
+
+        if (data.expired) {
+          setMessage("Ce lien de paiement a expiré (24h). Contactez le support.");
+          setMessageType("error");
+          setTokenExpired(true);
+          setTokenValid(false);
           setIsLoading(false);
           return;
         }
