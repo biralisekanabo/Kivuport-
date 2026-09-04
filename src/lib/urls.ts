@@ -1,15 +1,18 @@
 export function resolveAppUrl(request: Request): string {
-  const envUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
+  const envUrl = process.env.APP_URL;
   if (envUrl && !envUrl.includes("localhost")) return envUrl.replace(/\/$/, "");
 
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl}`;
-
-  const forwarded = request.headers.get("x-forwarded-host") || request.headers.get("x-forwarded-origin");
-  if (forwarded) {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  if (forwardedHost) {
     const proto = request.headers.get("x-forwarded-proto") || "https";
-    return `${proto}://${forwarded}`.replace(/\/$/, "");
+    return `${proto}://${forwardedHost}`.replace(/\/$/, "");
   }
 
-  return new URL(request.url).origin;
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl && !vercelUrl.includes("localhost")) return `https://${vercelUrl}`;
+
+  const origin = new URL(request.url).origin;
+  if (!origin.includes("localhost")) return origin;
+
+  return "https://kivuport-seven.vercel.app";
 }
