@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin";
 import { sendBrevoEmail } from "@/lib/brevo";
 import { confirmationEmail } from "@/lib/email-templates";
+import { resolveAppUrl } from "@/lib/urls";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const authorization = request.headers.get("authorization");
@@ -58,7 +59,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       }
       publicPaymentLink = { ...publicPaymentLink, external_reference: externalReference };
     }
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+    const appUrl = resolveAppUrl(request);
     const paymentUrl = `${appUrl}/paiement/${encodeURIComponent(publicPaymentLink.external_reference)}`;
     const detailUrl = `${appUrl}/reservation/${encodeURIComponent(publicPaymentLink.external_reference)}`;
     const voyage = (reservation.voyage as { code_voyage?: string } | null)?.code_voyage || "KivuPort";

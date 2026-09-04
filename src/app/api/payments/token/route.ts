@@ -1,6 +1,7 @@
 // app/api/payments/token/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { resolveAppUrl } from "@/lib/urls";
 
 export const runtime = "nodejs";
 
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
 
     const client = reservation.client as { nom?: string; prenom?: string; email?: string } | null;
     const customerName = [client?.prenom, client?.nom].filter(Boolean).join(" ") || "Client KivuPort";
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+    const appUrl = resolveAppUrl(request);
     const payload = {
       transactionReference: token,
       gatewayMode: "1",
