@@ -2126,6 +2126,14 @@ export default function AdminPage() {
     });
   }
 
+  useEffect(() => {
+    if (!isReady) return;
+    const intervalId = window.setInterval(() => {
+      void loadData();
+    }, 10000);
+    return () => window.clearInterval(intervalId);
+  }, [isReady]);
+
   // ===== NOTIFICATIONS =====
   useEffect(() => {
     if (!notice) return;

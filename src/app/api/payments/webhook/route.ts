@@ -8,6 +8,10 @@ type PaymentWebhook = {
   externalReference?: unknown;
   status?: unknown;
   amount?: unknown;
+  transactionReference?: unknown;
+  originatingTransactionId?: unknown;
+  transactionStatus?: unknown;
+  order?: { amount?: unknown };
   metadata?: unknown;
 };
 
@@ -38,15 +42,20 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
   }
-  if (typeof body.externalReference !== "string" || typeof body.status !== "string" || typeof body.amount !== "number") {
-    return NextResponse.json({ error: "externalReference, status and numeric amount are required." }, { status: 400 });
+  const externalReference = [body.externalReference, body.transactionReference, body.originatingTransactionId]
+    .find((value): value is string => typeof value === "string" && value.length > 0);
+  const providerStatus = body.status || body.transactionStatus;
+  const rawAmount = body.amount ?? body.order?.amount;
+  const amount = typeof rawAmount === "number" ? rawAmount : typeof rawAmount === "string" ? Number(rawAmount) : NaN;
+  if (!externalReference || typeof providerStatus !== "string" || !Number.isFinite(amount)) {
+    return NextResponse.json({ error: "A payment reference, status and numeric amount are required." }, { status: 400 });
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await supabase.rpc("process_kivuport_payment_webhook", {
-    p_external_reference: body.externalReference,
-    p_provider_status: body.status,
-    p_amount: body.amount,
+    p_external_reference: externalReference,
+    p_provider_status: providerStatus.toLowerCase(),
+    p_amount: amount,
     p_metadata: body.metadata && typeof body.metadata === "object" ? body.metadata : {},
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 409 });

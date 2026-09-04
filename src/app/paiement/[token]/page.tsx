@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   CheckCircle,
   AlertCircle,
-  CreditCard,
   Smartphone,
   Shield,
   Lock,
@@ -38,7 +37,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
-type PaymentMethod = "maisha_pay" | "card" | "orange_money" | "vodacom" | "airtel_money";
+type PaymentMethod = "maisha_pay";
 
 // ===== DÉTECTION OPÉRATEUR =====
 function detectOperator(phoneNumber: string): { operator: string; color: string; bg: string; border: string; icon: string; prefix: string } | null {
@@ -186,10 +185,6 @@ export default function PublicPaymentPage() {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>("maisha_pay");
   const [phone, setPhone] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
-  const [cardName, setCardName] = useState("");
   const [amount, setAmount] = useState(0);
   const [reference, setReference] = useState("");
   const [destination, setDestination] = useState("");
@@ -300,7 +295,7 @@ export default function PublicPaymentPage() {
       return;
     }
 
-    const isMobileMoney = ["maisha_pay", "orange_money", "vodacom", "airtel_money"].includes(method);
+    const isMobileMoney = method === "maisha_pay";
     
     // Validation téléphone
     if (isMobileMoney) {
@@ -311,30 +306,6 @@ export default function PublicPaymentPage() {
       }
       if (!validatePhone(phone)) {
         setMessage("📱 Numéro invalide. Format: +243 99 123 4567");
-        setMessageType("error");
-        return;
-      }
-    }
-
-    // Validation carte
-    if (method === "card") {
-      if (!cardNumber.trim() || cardNumber.replace(/\s/g, '').length < 16) {
-        setMessage("💳 Numéro de carte invalide.");
-        setMessageType("error");
-        return;
-      }
-      if (!cardExpiry.trim() || cardExpiry.length < 5) {
-        setMessage("💳 Date d'expiration invalide.");
-        setMessageType("error");
-        return;
-      }
-      if (!cardCvv.trim() || cardCvv.length < 3) {
-        setMessage("💳 CVV invalide.");
-        setMessageType("error");
-        return;
-      }
-      if (!cardName.trim() || cardName.length < 2) {
-        setMessage("💳 Nom du titulaire requis.");
         setMessageType("error");
         return;
       }
@@ -352,10 +323,6 @@ export default function PublicPaymentPage() {
           token, 
           method, 
           phone, 
-          cardNumber, 
-          cardExpiry, 
-          cardCvv, 
-          cardName 
         }),
       });
       
@@ -374,17 +341,15 @@ export default function PublicPaymentPage() {
         return;
       }
 
-      // Succès
-      setPaymentCompleted(true);
-      setCountdown(5);
-      
       if (result?.alreadyPaid) {
+        setPaymentCompleted(true);
+        setCountdown(5);
         setAlreadyPaid(true);
         setMessage("✅ Cette réservation est déjà payée. Vous pouvez télécharger le reçu.");
       } else {
-        setMessage(`✅ Paiement enregistré avec succès ! Référence: ${result.reference || reference}`);
+        setMessage(`📱 Demande envoyée. Confirmez le paiement sur votre téléphone. Référence: ${result.reference || reference}`);
       }
-      setMessageType("success");
+      setMessageType(result?.alreadyPaid ? "success" : "info");
 
     } catch (error) {
       console.error("Erreur paiement:", error);
@@ -396,20 +361,6 @@ export default function PublicPaymentPage() {
   }
 
   // ===== FORMATAGE =====
-  const formatCardNumber = (value: string) => {
-    const cleaned = value.replace(/\D/g, "");
-    const groups = cleaned.match(/.{1,4}/g);
-    return groups ? groups.join(" ") : cleaned;
-  };
-
-  const formatExpiry = (value: string) => {
-    const cleaned = value.replace(/\D/g, "");
-    if (cleaned.length >= 2) {
-      return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}`;
-    }
-    return cleaned;
-  };
-
   const formatPhone = (value: string) => {
     const cleaned = value.replace(/\D/g, "");
     if (cleaned.startsWith("243") && cleaned.length > 3) {
@@ -444,13 +395,9 @@ export default function PublicPaymentPage() {
 
   const methodConfigs = {
     maisha_pay: { icon: <Smartphone size={22} />, label: "Maisha Pay", color: "emerald" },
-    orange_money: { icon: <Smartphone size={22} />, label: "Orange Money", color: "orange" },
-    vodacom: { icon: <Smartphone size={22} />, label: "Vodacom", color: "red" },
-    airtel_money: { icon: <Smartphone size={22} />, label: "Airtel Money", color: "amber" },
-    card: { icon: <CreditCard size={22} />, label: "Carte bancaire", color: "purple" },
   };
 
-  const isMobileMoney = ["maisha_pay", "orange_money", "vodacom", "airtel_money"].includes(method);
+  const isMobileMoney = method === "maisha_pay";
   const operatorDetection = detectOperator(phone);
 
   // ===== LOADING =====
@@ -670,12 +617,12 @@ export default function PublicPaymentPage() {
                 onSubmit={pay}
                 className="space-y-4"
               >
-                {/* Méthodes de paiement */}
+                {/* MaishaPay */}
                 <motion.div variants={itemVariants}>
                   <label className="block text-sm font-medium text-gray-700 mb-2.5">
-                    Choisissez votre méthode
+                    Mode de paiement
                   </label>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {Object.entries(methodConfigs).map(([key, config]) => (
                       <MethodCard
                         key={key}
@@ -688,6 +635,9 @@ export default function PublicPaymentPage() {
                       />
                     ))}
                   </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Vous recevrez une demande sur votre portefeuille mobile. Saisissez ensuite votre code PIN sur votre téléphone pour confirmer.
+                  </p>
                 </motion.div>
 
                 {/* Champs */}
@@ -732,64 +682,6 @@ export default function PublicPaymentPage() {
                     </motion.div>
                   )}
 
-                  {method === "card" && (
-                    <motion.div
-                      key="card"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="space-y-3"
-                    >
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          <CreditCard size={14} className="inline mr-1.5 text-blue-500" />
-                          Numéro de carte *
-                        </label>
-                        <input
-                          value={cardNumber}
-                          onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                          placeholder="0000 0000 0000 0000"
-                          maxLength={19}
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-400 outline-none transition-all text-sm font-mono"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1.5">Expiration *</label>
-                          <input
-                            value={cardExpiry}
-                            onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                            placeholder="MM/AA"
-                            maxLength={5}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-400 outline-none transition-all text-sm font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1.5">CVV *</label>
-                          <input
-                            value={cardCvv}
-                            onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 3))}
-                            placeholder="123"
-                            maxLength={3}
-                            type="password"
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-400 outline-none transition-all text-sm font-mono"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          <User size={14} className="inline mr-1.5 text-blue-500" />
-                          Titulaire de la carte *
-                        </label>
-                        <input
-                          value={cardName}
-                          onChange={(e) => setCardName(e.target.value)}
-                          placeholder="Jean MUKENDI"
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-400 outline-none transition-all text-sm"
-                        />
-                      </div>
-                    </motion.div>
-                  )}
                 </AnimatePresence>
 
                 {/* Bouton de paiement */}
@@ -809,7 +701,7 @@ export default function PublicPaymentPage() {
                   ) : (
                     <>
                       <CircleDollarSign size={16} className="sm:w-[18px] sm:h-[18px]" />
-                      Payer {amount.toLocaleString("fr-FR")} FC
+                      Continuer avec MaishaPay · {amount.toLocaleString("fr-FR")} FC
                     </>
                   )}
                 </motion.button>

@@ -4,14 +4,26 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-type PaymentMethod = "maisha_pay" | "orange_money" | "vodacom" | "airtel_money" | "card";
+type PaymentMethod = "maisha_pay";
+
+function normalizePhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return digits.startsWith("243") ? digits : `243${digits.replace(/^0/, "")}`;
+}
+
+function detectProvider(phone: string) {
+  const localNumber = phone.slice(3, 5);
+  if (["81", "82", "83"].includes(localNumber)) return "MPESA";
+  if (["84", "85", "89"].includes(localNumber)) return "ORANGE";
+  if (["97", "98", "99"].includes(localNumber)) return "AIRTEL";
+  if (["90", "91"].includes(localNumber)) return "AFRICELL";
+  return null;
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { token, method, phone } = body;
-
-    console.log("📝 Paiement reçu:", { token, method, phone });
 
     if (!token) {
       return NextResponse.json({ error: "Token requis" }, { status: 400 });
@@ -26,7 +38,7 @@ export async function POST(request: Request) {
     // Trouver la réservation
     const { data: reservation, error: findError } = await supabase
       .from('reservations')
-      .select('id, prix_total, statut, tentative_paiement, token_expire_at')
+      .select('id, prix_total, statut, tentative_paiement, token_expire_at, client:client(nom, prenom, email)')
       .eq('token_paiement', token)
       .single();
 
@@ -47,78 +59,86 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Le lien de paiement a expiré (24h)" }, { status: 400 });
     }
 
-    // Valider la méthode
-    const validMethods = ["maisha_pay", "orange_money", "vodacom", "airtel_money", "card"];
-    if (!method || !validMethods.includes(method)) {
-      return NextResponse.json({ error: "Méthode de paiement invalide" }, { status: 400 });
+    // KivuPort utilise exclusivement MaishaPay.
+    if (method !== "maisha_pay") {
+      return NextResponse.json({ error: "Seul MaishaPay est accepté." }, { status: 400 });
     }
 
-    // Valider le téléphone
-    const isMobileMoney = ["maisha_pay", "orange_money", "vodacom", "airtel_money"].includes(method);
-    if (isMobileMoney) {
-      const cleaned = phone?.replace(/\s/g, '') || '';
-      const isValid = (cleaned.startsWith('243') && cleaned.length === 12) || 
-                      (cleaned.startsWith('0') && cleaned.length === 10);
-      if (!isValid) {
-        return NextResponse.json({ error: "Numéro de téléphone invalide" }, { status: 400 });
-      }
+    const cleaned = typeof phone === "string" ? phone.replace(/\D/g, "") : "";
+    const isValidPhone = (cleaned.startsWith("243") && cleaned.length === 12) ||
+      (cleaned.startsWith("0") && cleaned.length === 10);
+    if (!isValidPhone) {
+      return NextResponse.json({ error: "Numéro de téléphone invalide" }, { status: 400 });
     }
 
-    // SIMULER LE PAIEMENT (à remplacer par un vrai système)
-    // Pour le test, on considère que le paiement est réussi
-    const paymentSuccess = true;
+    const maishaApiKey = process.env.MAISHA_API_KEY;
+    const maishaApiSecret = process.env.MAISHA_API_SECRET;
+    const maishaApiUrl = process.env.MAISHA_API_URL;
+    if (!maishaApiKey || !maishaApiSecret || !maishaApiUrl) {
+      return NextResponse.json({
+        error: "MaishaPay n'est pas encore configuré : les clés et l'URL API sont requis.",
+      }, { status: 503 });
+    }
 
-    if (!paymentSuccess) {
+    const normalizedPhone = normalizePhone(cleaned);
+    const provider = detectProvider(normalizedPhone);
+    if (!provider) {
+      return NextResponse.json({ error: "Opérateur mobile non pris en charge." }, { status: 400 });
+    }
+
+    const client = reservation.client as { nom?: string; prenom?: string; email?: string } | null;
+    const customerName = [client?.prenom, client?.nom].filter(Boolean).join(" ") || "Client KivuPort";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+    const payload = {
+      transactionReference: token,
+      gatewayMode: "1",
+      publicApiKey: maishaApiKey,
+      secretApiKey: maishaApiSecret,
+      order: {
+        amount: String(reservation.prix_total),
+        currency: "CDF",
+        customerFullName: customerName,
+        customerEmailAdress: client?.email || "",
+      },
+      paymentChannel: {
+        channel: "MOBILEMONEY",
+        provider,
+        walletID: `+${normalizedPhone}`,
+        callbackUrl: `${appUrl}/api/payments/webhook`,
+      },
+    };
+
+    const response = await fetch(maishaApiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30_000),
+    });
+    const result = await response.json().catch(() => null);
+
+    if (!response.ok || (result && typeof result === "object" && "errors" in result)) {
       await supabase
-        .from('reservations')
+        .from("reservations")
         .update({ tentative_paiement: (reservation.tentative_paiement || 0) + 1 })
-        .eq('id', reservation.id);
-
-      return NextResponse.json({ error: "Le paiement a échoué" }, { status: 400 });
+        .eq("id", reservation.id);
+      const errorMessage = result && typeof result === "object" && "message" in result && typeof result.message === "string"
+        ? result.message
+        : "MaishaPay a refusé la demande de paiement.";
+      return NextResponse.json({ error: errorMessage }, { status: 502 });
     }
 
-    // Enregistrer le paiement
-    const { data: payment, error: paymentError } = await supabase
-      .from('paiements')
-      .insert({
-        idreservation: reservation.id,
-        montant: reservation.prix_total,
-        devise: 'FC',
-        mode_paiement: method,
-        date_paiement: new Date().toISOString(),
-        statut: 'paye',
-        telephone: phone || null,
-      })
-      .select()
-      .single();
-
-    if (paymentError) {
-      console.error("❌ Erreur enregistrement paiement:", paymentError);
-      return NextResponse.json({ 
-        error: "Erreur lors de l'enregistrement du paiement" 
-      }, { status: 500 });
-    }
-
-    // Mettre à jour la réservation
-    await supabase
-      .from('reservations')
-      .update({
-        statut: 'arrive',
-        token_paiement: null,
-        token_expire_at: null,
-        tentative_paiement: 0,
-      })
-      .eq('id', reservation.id);
-
-    console.log("✅ Paiement réussi pour la réservation:", reservation.id);
+    const responseData = result && typeof result === "object" && "data" in result ? result.data : result;
+    const providerReference = responseData && typeof responseData === "object"
+      ? ("transactionId" in responseData ? responseData.transactionId : "reference" in responseData ? responseData.reference : null)
+      : null;
 
     return NextResponse.json({
       success: true,
-      reservationId: reservation.id,
-      reference: `KP-${String(reservation.id).padStart(4, '0')}`,
+      status: "pending",
+      reference: token,
+      providerReference,
       amount: reservation.prix_total,
-      paymentId: payment.id,
-      message: "Paiement effectué avec succès !"
+      message: "Demande envoyée. Confirmez le paiement sur votre téléphone.",
     });
 
   } catch (error) {
