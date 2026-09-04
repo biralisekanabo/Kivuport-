@@ -156,6 +156,7 @@ export async function POST(request: Request) {
       const errorMessage = result && typeof result === "object" && "message" in result && typeof result.message === "string"
         ? result.message
         : "MaishaPay a refusé la demande de paiement.";
+      console.error("[MAISHAPAY_ERROR]", response.status, JSON.stringify(result));
       return NextResponse.json({ error: errorMessage }, { status: 502 });
     }
 
