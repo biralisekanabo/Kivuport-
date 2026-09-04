@@ -21,7 +21,7 @@ function hashCode(code: string): string {
 export async function storeOtp(email: string, code: string, ttlMs = TTL_MS) {
   const emailKey = email.toLowerCase();
   const client = supabase();
-  await client.from("kivuport_otp").upsert(
+  const { error } = await client.from("kivuport_otp").upsert(
     {
       email: emailKey,
       code_hash: hashCode(code),
@@ -30,6 +30,9 @@ export async function storeOtp(email: string, code: string, ttlMs = TTL_MS) {
     },
     { onConflict: "email" }
   );
+  if (error) {
+    throw new Error(`OTP storage failed: ${error.message}`);
+  }
 }
 
 export async function checkOtp(email: string, code: string): Promise<boolean> {
