@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
-const TTL_MS = 5 * 60 * 1000;
+const TTL_MS = 60 * 1000;
 
 function supabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
