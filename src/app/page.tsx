@@ -72,9 +72,6 @@ const Polyline = dynamic(
   { ssr: false }
 );
 
-// ===== CHARGEMENT DES STYLES CSS =====
-import "leaflet/dist/leaflet.css";
-
 // ===== TYPES =====
 type WeatherData = {
   temperature: number;
@@ -184,6 +181,14 @@ function InteractiveMap({ userLocation, onMapReady }: {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link");
+      link.id = "leaflet-css";
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+
     import("leaflet").then(({ default: leafletModule }) => {
       delete (leafletModule.Icon.Default.prototype as any)._getIconUrl;
       leafletModule.Icon.Default.mergeOptions({
