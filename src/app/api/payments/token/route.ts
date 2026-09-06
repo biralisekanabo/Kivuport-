@@ -182,26 +182,33 @@ export async function POST(request: Request) {
 
   if (apiUrl && apiKey && apiSecret) {
     try {
+      const providerBody = new URLSearchParams({
+        transactionReference: externalReference,
+        gatewayMode: process.env.MAISHA_GATEWAY_MODE ?? "1",
+        publicApiKey: apiKey,
+        secretApiKey: apiSecret,
+        "order[amount]": String(paymentAmount),
+        "order[currency]": "CDF",
+        "paymentChannel[channel]": "mobileMoney",
+        "paymentChannel[provider]": "maishaPay",
+        "paymentChannel[walletID]": clientPhone,
+      });
+
       const providerResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Basic ${Buffer.from(`${apiKey}:${apiSecret}`).toString("base64")}`,
+          "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: JSON.stringify({
-          reference: externalReference,
-          amount: paymentAmount,
-          currency: "CDF",
-          walletID: clientPhone,
-          merchantPhone: process.env.MAISHA_MERCHANT_PHONE || undefined,
-          mode: process.env.MAISHA_GATEWAY_MODE === "0" ? "sandbox" : "live",
-        }),
+        body: providerBody.toString(),
       });
 
       if (!providerResponse.ok) {
         const providerText = await providerResponse.text();
         console.error("MaishaPay request failed:", providerText);
-        return NextResponse.json({ error: "La demande de paiement MaishaPay a échoué." }, { status: 502 });
+        return NextResponse.json(
+          { error: "La demande de paiement MaishaPay a échoué.", providerStatus: providerResponse.status },
+          { status: 502 }
+        );
       }
 
       const payload = (await providerResponse.json().catch(() => ({}))) as { status?: string; reference?: string };
