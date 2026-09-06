@@ -1219,6 +1219,196 @@ a:focus-visible {
   background-color: #102a43 !important;
 }
 
+/* Keep internal pages on the same deep-ocean palette as the homepage. */
+:root.dark .dashboard-page {
+  background: radial-gradient(circle at 85% 5%, #173b50 0, transparent 28rem), linear-gradient(145deg, #0b1620 0%, #102331 52%, #0f1b28 100%) !important;
+  color: var(--text-body);
+}
+
+:root.dark .dashboard-page header,
+:root.dark .dashboard-page .bg-white\/80,
+:root.dark .dashboard-page .bg-white\/95 {
+  background-color: rgb(15 29 41 / .9) !important;
+  border-color: #294354 !important;
+  color: var(--text-body);
+}
+
+:root.dark .dashboard-page .bg-white,
+:root.dark .dashboard-page .bg-gray-50,
+:root.dark .dashboard-page .bg-gray-100 {
+  background-color: #172c3d !important;
+  border-color: #294354 !important;
+}
+
+:root.dark .dashboard-page .hover\:bg-gray-50:hover,
+:root.dark .dashboard-page .hover\:bg-gray-100:hover {
+  background-color: #213e50 !important;
+}
+
+:root.dark .dashboard-page input,
+:root.dark .dashboard-page select,
+:root.dark .dashboard-page textarea {
+  background-color: #102331 !important;
+  border-color: #355264 !important;
+  color: #f1f5f9 !important;
+}
+
+:root.dark .dashboard-page .text-gray-900,
+:root.dark .dashboard-page .text-gray-800,
+:root.dark .dashboard-page .text-gray-700 {
+  color: #edf5f8 !important;
+}
+
+:root.dark .dashboard-page .text-gray-600,
+:root.dark .dashboard-page .text-gray-500,
+:root.dark .dashboard-page .text-gray-400 {
+  color: #a9bdc9 !important;
+}
+
+:root.dark .dashboard-page .border-gray-100,
+:root.dark .dashboard-page .border-gray-200,
+:root.dark .dashboard-page .border-gray-300 {
+  border-color: #294354 !important;
+}
+
+/* Shared dark surfaces for every internal route. */
+:root.dark .travel-page,
+:root.dark .settings-page,
+:root.dark .booking-page,
+:root.dark .admin-shell,
+:root.dark .auth-page {
+  background: linear-gradient(145deg, #0b1620 0%, #102331 52%, #0f1b28 100%) !important;
+  color: var(--text-body);
+}
+
+:root.dark .travel-page .bg-white,
+:root.dark .settings-page .bg-white,
+:root.dark .booking-page .bg-white,
+:root.dark .admin-shell .bg-white,
+:root.dark .auth-page .bg-white,
+:root.dark .travel-page .bg-gray-50,
+:root.dark .settings-page .bg-gray-50,
+:root.dark .booking-page .bg-gray-50,
+:root.dark .admin-shell .bg-gray-50 {
+  background-color: #172c3d !important;
+  border-color: #294354 !important;
+}
+
+:root.dark .travel-page .text-gray-900,
+:root.dark .settings-page .text-gray-900,
+:root.dark .booking-page .text-gray-900,
+:root.dark .admin-shell .text-gray-900,
+:root.dark .auth-page .text-gray-900,
+:root.dark .travel-page .text-slate-900,
+:root.dark .settings-page .text-slate-900,
+:root.dark .booking-page .text-slate-900,
+:root.dark .admin-shell .text-slate-900 {
+  color: #edf5f8 !important;
+}
+
+:root.dark .travel-page .text-gray-500,
+:root.dark .settings-page .text-gray-500,
+:root.dark .booking-page .text-gray-500,
+:root.dark .admin-shell .text-gray-500,
+:root.dark .auth-page .text-gray-500 {
+  color: #a9bdc9 !important;
+}
+
+/* Final application-wide dark-mode pass for routes without a page wrapper. */
+:root.dark .site-nav,
+:root.dark .site-footer,
+:root.dark .auth-card,
+:root.dark .auth-modal,
+:root.dark .modal-content,
+:root.dark .legal-card,
+:root.dark .faq-card,
+:root.dark .contact-card,
+:root.dark .service-card,
+:root.dark .travel-card,
+:root.dark .booking-card,
+:root.dark .reservation-card,
+:root.dark .profile-card,
+:root.dark .settings-card,
+:root.dark .preferences-card,
+:root.dark .admin-card,
+:root.dark .dashboard-card,
+:root.dark .booking-form,
+:root.dark .booking-list,
+:root.dark .settings-form,
+:root.dark .service-grid article {
+  border-color: #294354 !important;
+  background-color: #172c3d !important;
+  color: var(--text-body);
+}
+
+:root.dark .site-footer a,
+:root.dark .site-footer p,
+:root.dark .site-nav a,
+:root.dark .site-nav button {
+  color: var(--text-body);
+}
+
+:root.dark .site-footer a:hover,
+:root.dark .site-nav a:hover,
+:root.dark .site-nav button:hover {
+  color: #8bd9f2;
+}
+
+:root.dark table thead,
+:root.dark .table-header,
+:root.dark .data-table thead {
+  background-color: #203e50 !important;
+  color: #edf5f8 !important;
+}
+
+:root.dark table tbody tr,
+:root.dark .data-table-row {
+  border-color: #294354 !important;
+  background-color: #172c3d;
+  color: var(--text-body);
+}
+
+:root.dark .modal-backdrop,
+:root.dark .admin-modal-backdrop {
+  background-color: rgb(2 10 18 / .78) !important;
+}
+
+:root.dark .auth-modal input,
+:root.dark .auth-modal textarea,
+:root.dark .auth-modal select,
+:root.dark .modal-content input,
+:root.dark .modal-content textarea,
+:root.dark .modal-content select {
+  border-color: #355264 !important;
+  background-color: #102331 !important;
+  color: #f1f5f9 !important;
+}
+
+:root.dark .auth-modal h1,
+:root.dark .auth-modal h2,
+:root.dark .auth-modal h3,
+:root.dark .modal-content h1,
+:root.dark .modal-content h2,
+:root.dark .modal-content h3,
+:root.dark .legal-card h1,
+:root.dark .legal-card h2,
+:root.dark .faq-card h2,
+:root.dark .contact-card h2 {
+  color: #edf5f8 !important;
+}
+
+:root.dark .auth-modal p,
+:root.dark .modal-content p,
+:root.dark .legal-card p,
+:root.dark .faq-card p,
+:root.dark .contact-card p {
+  color: #a9bdc9 !important;
+}
+
+:root.dark .animate-pulse {
+  --tw-bg-opacity: 1;
+}
+
 .nav-pill-action {
   display: inline-flex;
   width: 48px;

@@ -517,7 +517,7 @@ export default function DashboardPage() {
   // ===== LOADING STATE =====
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="dashboard-page min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
@@ -544,7 +544,7 @@ export default function DashboardPage() {
   // ===== RENDER ADMIN DASHBOARD =====
   if (isAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
+      <div className="dashboard-page min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
         {/* Header - ADMIN (similaire à avant, gardé concis) */}
         <motion.header
           initial={{ y: -100 }}
@@ -893,7 +893,7 @@ export default function DashboardPage() {
 
   // ===== RENDER USER DASHBOARD =====
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <div className="dashboard-page min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
       {/* Header - USER */}
       <motion.header
         initial={{ y: -100 }}
