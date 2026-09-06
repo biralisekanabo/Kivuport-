@@ -126,9 +126,9 @@ Le paiement public est accessible par `/paiement/[token]`. Le token est un lien 
 ### Envoi de la demande
 
 1. Le client sélectionne l'unique méthode autorisée : `maisha_pay`.
-2. Le numéro est validé et l'opérateur mobile est détecté.
-3. Le front appelle `POST /api/payments/token` avec le token, la méthode et le téléphone.
-4. Le serveur vérifie la réservation, l'expiration, le téléphone et la configuration MaishaPay.
+2. Le téléphone enregistré dans le profil client est affiché et utilisé automatiquement ; son opérateur est détecté.
+3. Le front appelle `POST /api/payments/token` avec le token et la méthode.
+4. Le serveur relit et valide le téléphone enregistré, la réservation, l'expiration et la configuration MaishaPay.
 5. Le serveur transmet la demande à l'API officielle MaishaPay en devise CDF.
 6. Le front affiche l'état `pending` et demande à l'utilisateur de confirmer sur son téléphone.
 

@@ -11,7 +11,6 @@ import {
   Smartphone,
   Shield,
   Lock,
-  Clock,
   User,
   Mail,
   Phone,
@@ -45,7 +44,7 @@ function OperatorBadge({ phone }: { phone: string }) {
   if (!d || phone.length < 8) return null;
   return (
     <motion.span
-      initial={{ opacity: 0, scale: 0.8 }}
+      initial={{ opacity: 1, scale: 1 }}
       animate={{ opacity: 1, scale: 1 }}
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${d.bg} ${d.border} ${d.color}`}
     >
@@ -63,6 +62,7 @@ export default function PublicPaymentPage() {
   const [isPaying, setIsPaying] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [phone, setPhone] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
   const [amount, setAmount] = useState(0);
   const [reference, setReference] = useState("");
   const [destination, setDestination] = useState("");
@@ -81,7 +81,7 @@ export default function PublicPaymentPage() {
   }, [token]);
 
   function validatePhone(p: string): boolean {
-    const c = p.replace(/\s/g, "");
+    const c = p.replace(/\D/g, "");
     if (c.startsWith("243") && c.length === 12) return true;
     if (c.startsWith("0") && c.length === 10) return true;
     return false;
@@ -138,6 +138,9 @@ export default function PublicPaymentPage() {
         setDestination(data.destination || "Goma - Bukavu");
         setClientName(data.client_name || "Client");
         setClientEmail(data.client_email || "client@email.com");
+        const storedPhone = data.client_phone || "";
+        setClientPhone(storedPhone);
+        setPhone(formatPhone(storedPhone));
         setAttempts(data.attempts || 0);
         setTokenValid(true);
       } catch {
@@ -169,8 +172,8 @@ export default function PublicPaymentPage() {
       setMessageType("error");
       return;
     }
-    if (!phone.trim()) {
-      setMessage("Saisissez votre numéro de téléphone.");
+    if (!clientPhone.trim()) {
+      setMessage("Aucun numéro de téléphone valide n'est enregistré pour ce client.");
       setMessageType("error");
       return;
     }
@@ -188,7 +191,7 @@ export default function PublicPaymentPage() {
       const res = await fetch("/api/payments/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, method: "maisha_pay", phone }),
+        body: JSON.stringify({ token, method: "maisha_pay" }),
       });
       const result = await res.json();
       if (!res.ok) {
@@ -218,24 +221,12 @@ export default function PublicPaymentPage() {
 
   const operatorDetection = detectOperator(phone);
 
-  const overlay = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1 },
-    exit: { opacity: 0 },
-  };
-
-  const modal = {
-    hidden: { opacity: 0, scale: 0.92, y: 30 },
-    visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring" as const, stiffness: 350, damping: 30 } },
-    exit: { opacity: 0, scale: 0.95, y: 20 },
-  };
-
   if (isLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm z-50">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 1, scale: 0.95, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4 w-[90vw] max-w-sm"
         >
           <div className="relative">
@@ -253,8 +244,12 @@ export default function PublicPaymentPage() {
   if (!tokenValid && !paymentCompleted) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm z-50 px-4">
-        <motion.div variants={overlay} initial="hidden" animate="visible" className="w-[90vw] max-w-sm">
-          <motion.div variants={modal} className="bg-white rounded-2xl shadow-2xl p-6 text-center">
+        <motion.div className="w-[90vw] max-w-sm">
+          <motion.div
+            initial={{ opacity: 1, scale: 0.95, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-2xl p-6 text-center"
+          >
             <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={28} className="text-red-500" />
             </div>
@@ -276,8 +271,12 @@ export default function PublicPaymentPage() {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm z-50 px-3 py-4 overflow-y-auto">
-      <motion.div variants={overlay} initial="hidden" animate="visible" className="w-[90vw] max-w-md">
-        <motion.div variants={modal} className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <motion.div className="w-[90vw] max-w-md">
+        <motion.div
+          initial={{ opacity: 1, scale: 0.95, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-2xl overflow-hidden"
+        >
 
           {/* Header */}
           <div className="px-5 pt-5 pb-4 bg-gradient-to-r from-blue-600 to-indigo-700 relative">
@@ -308,7 +307,7 @@ export default function PublicPaymentPage() {
           <div className="p-5">
             {paymentCompleted ? (
               /* ===== SUCCESS ===== */
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center py-2">
+              <motion.div initial={{ opacity: 1, y: 0 }} className="text-center py-2">
                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <CheckCircle size={32} className="text-emerald-500" />
                 </div>
@@ -354,9 +353,9 @@ export default function PublicPaymentPage() {
                   {message && (
                     <motion.div
                       key={message}
-                      initial={{ opacity: 0, height: 0 }}
+                      initial={{ opacity: 1, height: "auto" }}
                       animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
+                      exit={{ opacity: 1, height: "auto" }}
                       className={`mb-3 p-2.5 rounded-lg flex items-start gap-2 text-xs ${
                         messageType === "success"
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
@@ -388,6 +387,7 @@ export default function PublicPaymentPage() {
                       <input
                         value={phone}
                         onChange={(e) => setPhone(formatPhone(e.target.value))}
+                        readOnly={Boolean(clientPhone)}
                         placeholder="+243 99 123 4567"
                         className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-400 outline-none transition-all text-sm"
                       />
@@ -399,7 +399,7 @@ export default function PublicPaymentPage() {
                     </div>
                     {operatorDetection && (
                       <motion.p
-                        initial={{ opacity: 0, y: -3 }}
+                        initial={{ opacity: 1, y: 0 }}
                         animate={{ opacity: 1, y: 0 }}
                         className={`text-[11px] mt-1 flex items-center gap-1 ${operatorDetection.color}`}
                       >
@@ -408,7 +408,7 @@ export default function PublicPaymentPage() {
                       </motion.p>
                     )}
                     <p className="text-[10px] text-gray-400 mt-1.5">
-                      Vous recevrez une demande sur votre portefeuille mobile. Confirmez avec votre code PIN.
+                      Une demande sera envoyée à ce numéro. Confirmez-la avec votre code PIN.
                     </p>
                   </div>
 

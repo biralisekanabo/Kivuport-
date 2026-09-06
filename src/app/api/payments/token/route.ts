@@ -27,7 +27,7 @@ async function findReservation(
   // 1. Par token_paiement (flux client)
   const { data: byToken } = await supabase
     .from('reservations')
-    .select('id, prix_total, statut, tentative_paiement, token_expire_at, client:client(nom, prenom, email)')
+    .select('id, prix_total, statut, tentative_paiement, token_expire_at, client:client(nom, prenom, email, telephone)')
     .eq('token_paiement', token)
     .single();
 
@@ -50,7 +50,7 @@ async function findReservation(
       const reservationId = (paiement as { idreservation: number }).idreservation;
       const { data: reservation } = await supabase
         .from('reservations')
-        .select('id, prix_total, statut, tentative_paiement, token_expire_at, client:client(nom, prenom, email)')
+        .select('id, prix_total, statut, tentative_paiement, token_expire_at, client:client(nom, prenom, email, telephone)')
         .eq('id', reservationId)
         .single();
       if (reservation) return reservation as { id: number; prix_total: number; statut: string; tentative_paiement: number; token_expire_at: string | null; client: unknown };
@@ -63,7 +63,7 @@ async function findReservation(
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { token, method, phone } = body;
+    const { token, method } = body;
 
     if (!token) {
       return NextResponse.json({ error: "Token requis" }, { status: 400 });
@@ -96,11 +96,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Seul MaishaPay est accepté." }, { status: 400 });
     }
 
-    const cleaned = typeof phone === "string" ? phone.replace(/\D/g, "") : "";
+    const client = reservation.client as { nom?: string; prenom?: string; email?: string; telephone?: string } | null;
+    const cleaned = client?.telephone?.replace(/\D/g, "") || "";
     const isValidPhone = (cleaned.startsWith("243") && cleaned.length === 12) ||
       (cleaned.startsWith("0") && cleaned.length === 10);
     if (!isValidPhone) {
-      return NextResponse.json({ error: "Numéro de téléphone invalide" }, { status: 400 });
+      return NextResponse.json({ error: "Le client n'a pas de numéro de téléphone valide enregistré." }, { status: 422 });
     }
 
     const maishaApiKey = process.env.MAISHA_API_KEY;
@@ -118,11 +119,53 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Opérateur mobile non pris en charge." }, { status: 400 });
     }
 
-    const client = reservation.client as { nom?: string; prenom?: string; email?: string } | null;
     const customerName = [client?.prenom, client?.nom].filter(Boolean).join(" ") || "Client KivuPort";
     const appUrl = resolveAppUrl(request);
+
+    const { data: currentTransaction } = await supabase
+      .from("payment_transactions")
+      .select("idpaiement, provider_status")
+      .eq("external_reference", token)
+      .maybeSingle();
+
+    if (currentTransaction?.provider_status === "pending") {
+      return NextResponse.json({
+        success: true,
+        status: "pending",
+        reference: token,
+        amount: reservation.prix_total,
+        message: "Une demande de paiement est déjà en cours. Confirmez-la sur votre téléphone.",
+      });
+    }
+
+    let transactionReference = token;
+    if (currentTransaction) {
+      const { data: retryPayment, error: retryPaymentError } = await supabase
+        .from("paiements")
+        .insert({
+          montant: reservation.prix_total,
+          devise: "CDF",
+          mode_paiement: "MOMO",
+          date_paiement: new Date().toISOString(),
+          statut: "en_attente",
+          idreservation: reservation.id,
+        })
+        .select("id")
+        .single();
+      if (retryPaymentError || !retryPayment) {
+        return NextResponse.json({ error: retryPaymentError?.message || "Impossible de créer une nouvelle tentative." }, { status: 409 });
+      }
+      transactionReference = `KP-${reservation.id}-${crypto.randomUUID().replaceAll("-", "")}`;
+      const { error: transactionError } = await supabase
+        .from("payment_transactions")
+        .insert({ idpaiement: retryPayment.id, external_reference: transactionReference, provider: "maisha_pay" });
+      if (transactionError) {
+        return NextResponse.json({ error: transactionError.message }, { status: 409 });
+      }
+    }
+
     const payload = {
-      transactionReference: token,
+      transactionReference,
       gatewayMode: "1",
       publicApiKey: maishaApiKey,
       secretApiKey: maishaApiSecret,
@@ -168,13 +211,13 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       status: "pending",
-      reference: token,
+      reference: transactionReference,
       providerReference,
       amount: reservation.prix_total,
       message: "Demande envoyée. Confirmez le paiement sur votre téléphone.",
     });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json({
       error: "Une erreur inattendue est survenue"
     }, { status: 500 });
