@@ -3040,61 +3040,88 @@ export default function AdminPage() {
 
       y -= 84;
       const chartTop = y;
-      const chartHeight = 112;
+      const chartHeight = 136;
       const chartWidth = 160;
       const chartGap = 15;
       const chartX = [margin, margin + chartWidth + chartGap, margin + (chartWidth + chartGap) * 2];
-      const chartTitles = ["Statut des réservations", "Répartition des devises", "Activité par statut"];
-      const chartData = [
-        [
-          { label: "Confirmées", value: confirmed, color: rgb(0.21, 0.78, 0.55) },
-          { label: "En attente", value: pending, color: rgb(0.98, 0.66, 0.15) },
-          { label: "Annulées", value: canceled, color: rgb(0.93, 0.27, 0.27) },
-        ],
-        [
-          { label: "CDF", value: currencyTotals.CDF, color: rgb(0.13, 0.59, 0.95) },
-          { label: "USD", value: currencyTotals.USD, color: rgb(0.55, 0.35, 0.8) },
-        ],
-        [
-          { label: "Réservations", value: filteredReservations.length, color: rgb(0.13, 0.59, 0.95) },
-          { label: "Payées", value: filteredReservations.filter((r) => r.status === "Payée").length, color: rgb(0.21, 0.78, 0.55) },
-        ],
-      ];
+      const panelColor = rgb(1, 1, 1);
+      const panelBorder = rgb(0.86, 0.89, 0.94);
+      const titleColor = rgb(0.08, 0.16, 0.3);
 
-      chartData.forEach((items, chartIndex) => {
-        const x = chartX[chartIndex];
+      chartX.forEach((x) => {
         currentPage.drawRectangle({
           x,
           y: chartTop - chartHeight,
           width: chartWidth,
           height: chartHeight,
-          color: rgb(1, 1, 1),
-          borderColor: rgb(0.86, 0.89, 0.94),
+          color: panelColor,
+          borderColor: panelBorder,
           borderWidth: 1,
         });
-        currentPage.drawText(chartTitles[chartIndex], {
-          x: x + 10,
-          y: chartTop - 18,
-          size: 8,
-          font: fontBold,
-          color: rgb(0.12, 0.18, 0.3),
-        });
-        const maxValue = Math.max(...items.map((item) => item.value), 1);
-        items.forEach((item, itemIndex) => {
-          const barY = chartTop - 40 - itemIndex * 28;
-          const barWidth = Math.max(3, (item.value / maxValue) * 92);
-          currentPage.drawText(pdfText(item.label), { x: x + 10, y: barY + 3, size: 7, font, color: rgb(0.3, 0.34, 0.4) });
-          currentPage.drawRectangle({ x: x + 62, y: barY, width: 92, height: 10, color: rgb(0.92, 0.94, 0.97) });
-          currentPage.drawRectangle({ x: x + 62, y: barY, width: barWidth, height: 10, color: item.color });
-          currentPage.drawText(pdfText(item.value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })), {
-            x: x + 62,
-            y: barY - 10,
-            size: 6.5,
-            font,
-            color: rgb(0.25, 0.28, 0.34),
-          });
-        });
       });
+
+      // Courbe: évolution des réservations par date.
+      currentPage.drawText("Évolution des réservations", { x: chartX[0] + 10, y: chartTop - 18, size: 8, font: fontBold, color: titleColor });
+      const byDay: Record<string, number> = {};
+      filteredReservations.forEach((reservation) => {
+        byDay[reservation.date] = (byDay[reservation.date] || 0) + 1;
+      });
+      const trendValues = Object.values(byDay).slice(-7);
+      const trendMax = Math.max(...trendValues, 1);
+      const plotLeft = chartX[0] + 16;
+      const plotBottom = chartTop - 113;
+      const plotWidth = 128;
+      const plotHeight = 76;
+      currentPage.drawLine({ start: { x: plotLeft, y: plotBottom }, end: { x: plotLeft + plotWidth, y: plotBottom }, thickness: 1, color: panelBorder });
+      currentPage.drawLine({ start: { x: plotLeft, y: plotBottom }, end: { x: plotLeft, y: plotBottom + plotHeight }, thickness: 1, color: panelBorder });
+      trendValues.forEach((value, index) => {
+        const x = plotLeft + (trendValues.length <= 1 ? plotWidth / 2 : (index / (trendValues.length - 1)) * plotWidth);
+        const pointY = plotBottom + (value / trendMax) * plotHeight;
+        if (index > 0) {
+          const previousX = plotLeft + ((index - 1) / (trendValues.length - 1)) * plotWidth;
+          const previousY = plotBottom + (trendValues[index - 1] / trendMax) * plotHeight;
+          currentPage.drawLine({ start: { x: previousX, y: previousY }, end: { x, y: pointY }, thickness: 2, color: rgb(0.1, 0.45, 0.9) });
+        }
+        currentPage.drawCircle({ x, y: pointY, size: 3.5, color: rgb(0.1, 0.45, 0.9), borderColor: rgb(1, 1, 1), borderWidth: 1 });
+      });
+      currentPage.drawText(`${filteredReservations.length} au total`, { x: chartX[0] + 10, y: chartTop - 128, size: 7, font, color: rgb(0.35, 0.4, 0.48) });
+
+      // Anneau: répartition des statuts avec légende.
+      currentPage.drawText("Répartition des statuts", { x: chartX[1] + 10, y: chartTop - 18, size: 8, font: fontBold, color: titleColor });
+      const statusItems = [
+        { label: "Confirmées", value: confirmed, color: rgb(0.1, 0.7, 0.45) },
+        { label: "En attente", value: pending, color: rgb(0.98, 0.62, 0.12) },
+        { label: "Annulées", value: canceled, color: rgb(0.9, 0.2, 0.25) },
+      ];
+      const statusTotal = Math.max(statusItems.reduce((sum, item) => sum + item.value, 0), 1);
+      const ringX = chartX[1] + 52;
+      const ringY = chartTop - 70;
+      currentPage.drawCircle({ x: ringX, y: ringY, size: 34, color: rgb(0.93, 0.95, 0.98) });
+      currentPage.drawCircle({ x: ringX, y: ringY, size: 22, color: panelColor });
+      currentPage.drawText(String(filteredReservations.length), { x: ringX - 7, y: ringY - 3, size: 10, font: fontBold, color: titleColor });
+      statusItems.forEach((item, index) => {
+        const legendY = chartTop - 45 - index * 20;
+        currentPage.drawCircle({ x: chartX[1] + 98, y: legendY + 2, size: 4, color: item.color });
+        currentPage.drawText(pdfText(`${item.label}  ${Math.round((item.value / statusTotal) * 100)}%`), { x: chartX[1] + 107, y: legendY, size: 6.5, font, color: rgb(0.3, 0.34, 0.4) });
+      });
+      currentPage.drawText("Statuts suivis en temps réel", { x: chartX[1] + 10, y: chartTop - 128, size: 7, font, color: rgb(0.35, 0.4, 0.48) });
+
+      // Histogramme: comparaison des montants par devise.
+      currentPage.drawText("Recettes par devise", { x: chartX[2] + 10, y: chartTop - 18, size: 8, font: fontBold, color: titleColor });
+      const currencyItems = [
+        { label: "CDF", value: currencyTotals.CDF, color: rgb(0.08, 0.5, 0.9) },
+        { label: "USD", value: currencyTotals.USD, color: rgb(0.55, 0.3, 0.78) },
+      ];
+      const currencyMax = Math.max(...currencyItems.map((item) => item.value), 1);
+      currencyItems.forEach((item, index) => {
+        const barX = chartX[2] + 35 + index * 58;
+        const barHeight = Math.max(4, (item.value / currencyMax) * 78);
+        currentPage.drawRectangle({ x: barX, y: chartTop - 108, width: 28, height: 78, color: rgb(0.93, 0.95, 0.98) });
+        currentPage.drawRectangle({ x: barX, y: chartTop - 108, width: 28, height: barHeight, color: item.color });
+        currentPage.drawText(item.label, { x: barX + 7, y: chartTop - 120, size: 7, font: fontBold, color: item.color });
+        currentPage.drawText(pdfText(item.value.toLocaleString("fr-FR", { maximumFractionDigits: 0 })), { x: barX - 4, y: chartTop - 25 - barHeight, size: 6, font, color: rgb(0.3, 0.34, 0.4) });
+      });
+      currentPage.drawText("Montants encaissés", { x: chartX[2] + 10, y: chartTop - 128, size: 7, font, color: rgb(0.35, 0.4, 0.48) });
 
       y = chartTop - chartHeight - 24;
       currentPage.drawLine({ start: { x: margin, y }, end: { x: pageWidth - margin, y }, thickness: 1, color: rgb(0.85, 0.85, 0.85) });
