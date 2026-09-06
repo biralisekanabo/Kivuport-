@@ -57,38 +57,52 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "La configuration MaishaPay live est incomplète." }, { status: 503 });
   }
 
-  const providerResponse = await fetch(apiUrl, {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({
-      transactionReference: token,
-      // This endpoint is intentionally live-only: the email payment action
-      // must always create a real MaishaPay Mobile Money request.
-      gatewayMode: "1",
-      publicApiKey: publicKey,
-      secretApiKey: secretKey,
-      order: {
-        amount: Number(reservation.prix_total ?? payment.montant),
-        currency: "CDF",
-        customerFullName: [client?.prenom, client?.nom].filter(Boolean).join(" ") || "KivuPort Client",
-        customerEmailAdress: client?.email || "",
-      },
-      paymentChannel: {
-        channel: "MOBILEMONEY",
-        provider,
-        walletID: phone,
-        callbackUrl,
-      },
-    }),
-  });
+  let providerResponse: Response;
+  try {
+    providerResponse = await fetch(apiUrl, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transactionReference: token,
+        gatewayMode: "1",
+        publicApiKey: publicKey,
+        secretApiKey: secretKey,
+        order: {
+          amount: Number(reservation.prix_total ?? payment.montant),
+          currency: "CDF",
+          customerFullName: [client?.prenom, client?.nom].filter(Boolean).join(" ") || "KivuPort Client",
+          customerEmailAdress: client?.email || "",
+        },
+        paymentChannel: {
+          channel: "MOBILEMONEY",
+          provider,
+          walletID: phone,
+          callbackUrl,
+        },
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (error) {
+    console.error("MaishaPay request failed before receiving a response", {
+      message: error instanceof Error ? error.message : String(error),
+      reference: token,
+      provider,
+    });
+    return NextResponse.json({ error: "MaishaPay est momentanément inaccessible. Aucune demande PIN n'a été déclenchée." }, { status: 502 });
+  }
   const payload = await providerResponse.json().catch(() => ({}));
+  const responseData = payload.data as Record<string, unknown> | undefined;
+  const providerStatus = String(payload.status || payload.transactionStatus || responseData?.status || "").toLowerCase();
+  const providerAccepted = payload.success !== false && responseData?.success !== false;
   if (!providerResponse.ok) {
     const providerMessage = typeof payload.message === "string" ? payload.message : typeof payload.error === "string" ? payload.error : "";
     return NextResponse.json({ error: providerMessage || "MaishaPay a refusé la demande de paiement.", details: payload }, { status: 502 });
   }
-  const providerStatus = String(payload.status || payload.transactionStatus || "pending").toLowerCase();
-  if (["failed", "cancelled", "canceled", "refused", "rejected"].includes(providerStatus)) {
+  if (!providerAccepted || ["failed", "cancelled", "canceled", "refused", "rejected"].includes(providerStatus)) {
     return NextResponse.json({ error: typeof payload.message === "string" ? payload.message : "MaishaPay n'a pas accepté la demande de paiement.", details: payload }, { status: 502 });
+  }
+  if (!providerStatus && !payload.transactionId && !payload.id && !responseData?.transactionId && !responseData?.id) {
+    return NextResponse.json({ error: "MaishaPay n'a pas confirmé le déclenchement de la demande PIN.", details: payload }, { status: 502 });
   }
 
   const { error: transactionError } = await supabase.from("payment_transactions").update({
