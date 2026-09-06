@@ -1,102 +1,45 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+export const runtime = "nodejs";
+
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const token = searchParams.get('token');
+  const token = new URL(request.url).searchParams.get("token")?.trim();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!token || !url || !key) return NextResponse.json({ error: "Lien de paiement invalide." }, { status: 400 });
 
-  if (!token) {
-    return NextResponse.json({ error: 'Token requis' }, { status: 400 });
-  }
+  const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: transaction } = await supabase
+    .from("payment_transactions")
+    .select("idpaiement, external_reference")
+    .eq("external_reference", token)
+    .maybeSingle();
+  if (!transaction) return NextResponse.json({ error: "Réservation introuvable." }, { status: 404 });
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-  );
-
-  let reservationId: number | null = null;
-
-  // 1. Essayer par token_paiement (flux client)
-  const { data: byToken } = await supabase
-    .from('reservations')
-    .select('id')
-    .eq('token_paiement', token)
+  const { data: payment } = await supabase
+    .from("paiements")
+    .select("idreservation, montant, statut")
+    .eq("id", transaction.idpaiement)
     .single();
+  if (!payment) return NextResponse.json({ error: "Paiement introuvable." }, { status: 404 });
 
-  if (byToken) {
-    reservationId = byToken.id;
-  } else {
-    // 2. Essayer par external_reference dans payment_transactions (flux email)
-    const { data: byRef } = await supabase
-      .from('payment_transactions')
-      .select('idpaiement')
-      .eq('external_reference', token)
-      .single();
-
-    if (byRef) {
-      const { data: paiement } = await supabase
-        .from('paiements')
-        .select('idreservation')
-        .eq('id', byRef.idpaiement)
-        .single();
-      if (paiement) {
-        reservationId = paiement.idreservation;
-      }
-    }
-  }
-
-  if (!reservationId) {
-    return NextResponse.json({ error: 'Réservation introuvable' }, { status: 404 });
-  }
-
-  const { data, error } = await supabase
-    .from('reservations')
-    .select(`
-      id,
-      prix_total,
-      statut,
-      tentative_paiement,
-      token_expire_at,
-      client:client(nom, prenom, email, telephone),
-      voyage:voyages(code_voyage)
-    `)
-    .eq('id', reservationId)
+  const { data: reservation, error } = await supabase
+    .from("reservations")
+    .select("id, statut, prix_total, client:client(nom, prenom, email, telephone), voyage:voyages(code_voyage)")
+    .eq("id", payment.idreservation)
     .single();
+  if (error || !reservation) return NextResponse.json({ error: "Réservation introuvable." }, { status: 404 });
 
-  if (error || !data) {
-    return NextResponse.json({ error: 'Réservation introuvable' }, { status: 404 });
-  }
-
-  if (data.statut === 'arrive') {
-    return NextResponse.json({
-      ...data,
-      alreadyPaid: true,
-      message: 'Cette réservation est déjà payée.'
-    });
-  }
-
-  if (data.token_expire_at && new Date() > new Date(data.token_expire_at)) {
-    return NextResponse.json({
-      ...data,
-      expired: true,
-      message: 'Ce lien de paiement a expiré (24h).'
-    });
-  }
-
-  const voyage = (data.voyage as { code_voyage?: string } | null);
-  const client = (data.client as { nom?: string; prenom?: string; email?: string; telephone?: string } | null);
-
+  const client = reservation.client as { nom?: string; prenom?: string; email?: string; telephone?: string } | null;
   return NextResponse.json({
-    id: data.id,
-    amount: data.prix_total || 0,
-    reference: `KP-${String(data.id).padStart(4, '0')}`,
-    destination: voyage?.code_voyage || 'Goma - Bukavu',
-    client_name: `${client?.prenom || ''} ${client?.nom || ''}`.trim() || 'Client',
-    client_email: client?.email || 'client@email.com',
-    client_phone: client?.telephone || '',
-    statut: data.statut,
-    attempts: data.tentative_paiement || 0,
-    token_expire_at: data.token_expire_at,
+    id: reservation.id,
+    reference: transaction.external_reference,
+    amount: Number(reservation.prix_total ?? payment.montant ?? 0),
+    status: reservation.statut,
+    alreadyPaid: payment.statut === "paye" || reservation.statut === "arrive",
+    destination: (reservation.voyage as { code_voyage?: string } | null)?.code_voyage || "KivuPort",
+    clientName: [client?.prenom, client?.nom].filter(Boolean).join(" ") || "Client",
+    clientPhone: client?.telephone || "",
   });
 }

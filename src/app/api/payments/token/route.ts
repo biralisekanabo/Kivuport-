@@ -3,277 +3,100 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-type PaymentRequest = {
-  token?: string;
-  method?: string;
-  phone?: string;
-};
-
-function normalizePhone(value: string): string {
+function normalizePhone(value: string) {
   const digits = value.replace(/\D/g, "");
-  if (!digits) return "";
-  if (digits.startsWith("243")) return `+${digits}`;
+  if (digits.startsWith("243") && digits.length >= 12) return `+${digits}`;
   if (digits.startsWith("0") && digits.length === 10) return `+243${digits.slice(1)}`;
-  return digits.length >= 9 ? `+243${digits}` : "";
+  return "";
 }
 
-function detectProvider(phone: string): string {
-  const digits = phone.replace(/\D/g, "").replace(/^243/, "0");
-  if (/^0(97|98|99)/.test(digits)) return "AIRTEL";
-  if (/^0(84|85|86|87|88|89)/.test(digits)) return "ORANGE";
-  if (/^0(81|82)/.test(digits)) return "VODACOM";
-  return "AIRTEL";
-}
-
-function providerCredentials(provider: string): { apiKey?: string; apiSecret?: string } {
-  const prefix = provider === "VODACOM" ? "VODACOM" : "AIRTEL";
-  return {
-    apiKey: (process.env[`MAISHA_${prefix}_API_KEY`] || process.env.MAISHA_API_KEY)?.trim(),
-    apiSecret: (process.env[`MAISHA_${prefix}_API_SECRET`] || process.env.MAISHA_API_SECRET)?.trim(),
-  };
+function detectProvider(phone: string): "AIRTEL" | "VODACOM" | "ORANGE" | null {
+  const local = phone.replace(/\D/g, "").replace(/^243/, "0");
+  if (/^0(97|98|99)/.test(local)) return "AIRTEL";
+  if (/^0(81|82)/.test(local)) return "VODACOM";
+  if (/^0(84|85|86|87|88|89)/.test(local)) return "ORANGE";
+  return null;
 }
 
 export async function POST(request: Request) {
-  let body: PaymentRequest;
+  const body = await request.json().catch(() => null) as { token?: string; phone?: string } | null;
+  const token = body?.token?.trim();
+  if (!token) return NextResponse.json({ error: "Référence de paiement requise." }, { status: 400 });
 
-  try {
-    body = (await request.json()) as PaymentRequest;
-  } catch {
-    return NextResponse.json({ error: "Payload JSON invalide." }, { status: 400 });
-  }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return NextResponse.json({ error: "Supabase n'est pas configuré." }, { status: 503 });
+  const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  const token = String(body.token ?? "").trim();
-  const method = String(body.method ?? "").trim();
+  const { data: transaction } = await supabase.from("payment_transactions")
+    .select("id, idpaiement, external_reference").eq("external_reference", token).maybeSingle();
+  if (!transaction) return NextResponse.json({ error: "Référence de paiement invalide." }, { status: 404 });
 
-  if (!token || !method) {
-    return NextResponse.json({ error: "Le token et la méthode de paiement sont requis." }, { status: 400 });
-  }
+  const { data: payment } = await supabase.from("paiements")
+    .select("idreservation, montant, statut").eq("id", transaction.idpaiement).single();
+  if (!payment) return NextResponse.json({ error: "Paiement introuvable." }, { status: 404 });
+  if (payment.statut === "paye") return NextResponse.json({ success: true, alreadyPaid: true, reference: token });
 
-  if (method !== "maisha_pay") {
-    return NextResponse.json({ error: "Méthode de paiement non prise en charge." }, { status: 400 });
-  }
+  const { data: reservation } = await supabase.from("reservations")
+    .select("id, statut, prix_total, client:client(nom, prenom, email, telephone)")
+    .eq("id", payment.idreservation).single();
+  if (!reservation) return NextResponse.json({ error: "Réservation introuvable." }, { status: 404 });
+  if (reservation.statut !== "confirme") return NextResponse.json({ error: "La réservation doit être confirmée." }, { status: 409 });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const client = reservation.client as { nom?: string; prenom?: string; email?: string; telephone?: string } | null;
+  const phone = normalizePhone(body?.phone || client?.telephone || "");
+  if (!phone) return NextResponse.json({ error: "Le numéro Mobile Money du client est invalide." }, { status: 422 });
+  const provider = detectProvider(phone);
+  if (!provider) return NextResponse.json({ error: "L'opérateur Mobile Money de ce numéro n'est pas reconnu par MaishaPay." }, { status: 422 });
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json({ error: "La configuration du paiement est incomplète." }, { status: 503 });
-  }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  let reservationId: number | null = null;
-  let paymentId: number | null = null;
-  let externalReference: string | null = null;
-  let paymentAmount = 0;
-  let clientPhone = "";
-
-  const { data: byToken } = await supabase
-    .from("reservations")
-    .select("id, statut, prix_total, token_expire_at, token_paiement, client:client(telephone, email)")
-    .eq("token_paiement", token)
-    .maybeSingle();
-
-  if (byToken) {
-    reservationId = byToken.id;
-    paymentAmount = Number(byToken.prix_total ?? 0);
-    clientPhone = normalizePhone((byToken.client as { telephone?: string } | null)?.telephone ?? "");
-    const { data: payment } = await supabase
-      .from("paiements")
-      .select("id")
-      .eq("idreservation", reservationId)
-      .eq("statut", "en_attente")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    paymentId = payment?.id ?? null;
-
-    const { data: transaction } = await supabase
-      .from("payment_transactions")
-      .select("external_reference")
-      .eq("idpaiement", paymentId ?? 0)
-      .maybeSingle();
-
-    externalReference = transaction?.external_reference ?? null;
-  } else {
-    const { data: tx } = await supabase
-      .from("payment_transactions")
-      .select("idpaiement, external_reference")
-      .eq("external_reference", token)
-      .maybeSingle();
-
-    if (tx) {
-      paymentId = tx.idpaiement;
-      externalReference = tx.external_reference;
-
-      const { data: payment } = await supabase
-        .from("paiements")
-        .select("idreservation, montant, statut")
-        .eq("id", tx.idpaiement)
-        .maybeSingle();
-
-      if (payment) {
-        reservationId = payment.idreservation;
-        paymentAmount = Number(payment.montant ?? 0);
-      }
-
-      const { data: reservation } = await supabase
-        .from("reservations")
-        .select("id, statut, prix_total, token_expire_at, client:client(telephone, email)")
-        .eq("id", reservationId)
-        .maybeSingle();
-
-      if (reservation) {
-        clientPhone = normalizePhone((reservation.client as { telephone?: string } | null)?.telephone ?? "");
-        paymentAmount = Number(reservation.prix_total ?? paymentAmount ?? 0);
-      }
-    }
-  }
-
-  if (!reservationId || !paymentId) {
-    return NextResponse.json({ error: "Lien de paiement invalide ou réservation introuvable." }, { status: 404 });
-  }
-
-  const reservation = await supabase
-    .from("reservations")
-    .select("statut, prix_total, token_expire_at, client:client(telephone, email, nom, prenom)")
-    .eq("id", reservationId)
-    .single();
-
-  const reservationData = reservation.data as {
-    statut?: string;
-    prix_total?: number | string;
-    token_expire_at?: string | null;
-    client?: { telephone?: string | null; email?: string | null; nom?: string | null; prenom?: string | null } | null;
-  } | null;
-
-  if (!reservationData) {
-    return NextResponse.json({ error: "Réservation introuvable." }, { status: 404 });
-  }
-
-  if (reservationData.statut === "arrive") {
-    return NextResponse.json({ success: true, alreadyPaid: true, reference: externalReference ?? token, amount: Number(reservationData.prix_total ?? paymentAmount ?? 0) });
-  }
-
-  if (reservationData.token_expire_at && new Date() > new Date(reservationData.token_expire_at)) {
-    return NextResponse.json({ error: "Ce lien de paiement a expiré." }, { status: 410 });
-  }
-
-  const finalPhone = normalizePhone(body.phone ?? (reservationData.client?.telephone ?? ""));
-  if (!finalPhone) {
-    return NextResponse.json({ error: "Aucun numéro de téléphone valide n'est enregistré pour ce client." }, { status: 422 });
-  }
-
-  clientPhone = finalPhone;
-  paymentAmount = Number(reservationData.prix_total ?? paymentAmount ?? 0);
-
-  if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
-    return NextResponse.json({ error: "Le montant du paiement est invalide." }, { status: 400 });
-  }
-
-  if (!externalReference) {
-    externalReference = `KP-${String(reservationId).padStart(4, "0")}-${Date.now()}`;
-    const { error: txError } = await supabase.from("payment_transactions").upsert(
-      {
-        idpaiement: paymentId,
-        external_reference: externalReference,
-        provider: "maisha_pay",
-        provider_status: "pending",
-        metadata: {},
-      },
-      { onConflict: "idpaiement" }
-    );
-
-    if (txError) {
-      return NextResponse.json({ error: txError.message || "Impossible d'enregistrer la référence de paiement." }, { status: 409 });
-    }
-  }
-
+  const publicKey = process.env.MAISHA_PUBLIC_API_KEY;
+  const secretKey = process.env.MAISHA_API_SECRET_KEY;
   const apiUrl = process.env.MAISHA_API_URL;
-  const provider = detectProvider(clientPhone);
-  const { apiKey, apiSecret } = providerCredentials(provider);
-
-  if (apiUrl && apiKey && apiSecret) {
-    try {
-      const callbackUrl = process.env.MAISHA_CALLBACK_URL
-        || `${process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || ""}/api/payments/webhook`;
-      const providerResponse = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          transactionReference: externalReference,
-          gatewayMode: process.env.MAISHA_GATEWAY_MODE ?? "1",
-          publicApiKey: apiKey,
-          secretApiKey: apiSecret,
-          order: {
-            amount: paymentAmount,
-            currency: "CDF",
-            customerFullName: [reservationData.client?.prenom, reservationData.client?.nom].filter(Boolean).join(" ") || "KivuPort Client",
-            customerEmailAdress: reservationData.client?.email || "client@kivuport.com",
-          },
-          paymentChannel: {
-            channel: "MOBILEMONEY",
-            provider,
-            // MaishaPay expects the customer's wallet in international format.
-            walletID: clientPhone,
-            ...(callbackUrl.startsWith("http") ? { callbackUrl } : {}),
-          },
-        }),
-      });
-
-      if (!providerResponse.ok) {
-        const providerText = await providerResponse.text();
-        console.error("MaishaPay request failed:", providerText);
-        return NextResponse.json(
-          {
-            error: "La demande de paiement MaishaPay a échoué.",
-            providerStatus: providerResponse.status,
-            providerDetails: providerText.slice(0, 500),
-          },
-          { status: 502 }
-        );
-      }
-
-      const payload = (await providerResponse.json().catch(() => ({}))) as Record<string, unknown>;
-      const providerStatus = String(payload.status || payload.transactionStatus || "pending").toLowerCase();
-      await supabase
-        .from("payment_transactions")
-        .update({
-          provider_status: providerStatus,
-          metadata: { ...payload, phone: clientPhone },
-          updated_at: new Date().toISOString(),
-        })
-        .eq("idpaiement", paymentId);
-
-      return NextResponse.json({
-        success: true,
-        alreadyPaid: false,
-        reference: externalReference,
-        amount: paymentAmount,
-        status: providerStatus,
-        provider,
-        phone: clientPhone,
-        providerResponse: payload,
-      });
-    } catch (error) {
-      console.error("❌ MaishaPay call failed:", error);
-      return NextResponse.json({ error: "Le fournisseur de paiement n'est pas disponible pour le moment." }, { status: 502 });
-    }
+  const callbackUrl = process.env.MAISHA_CALLBACK_URL;
+  if (!apiUrl || !publicKey || !secretKey || !callbackUrl?.startsWith("https://")) {
+    return NextResponse.json({ error: "La configuration MaishaPay live est incomplète." }, { status: 503 });
   }
 
-  return NextResponse.json({
-    success: true,
-    alreadyPaid: false,
-    reference: externalReference,
-    amount: paymentAmount,
-    status: "pending",
-    provider: "maisha_pay",
-    phone: clientPhone,
+  const providerResponse = await fetch(apiUrl, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({
+      transactionReference: token,
+      // This endpoint is intentionally live-only: the email payment action
+      // must always create a real MaishaPay Mobile Money request.
+      gatewayMode: "1",
+      publicApiKey: publicKey,
+      secretApiKey: secretKey,
+      order: {
+        amount: Number(reservation.prix_total ?? payment.montant),
+        currency: "CDF",
+        customerFullName: [client?.prenom, client?.nom].filter(Boolean).join(" ") || "KivuPort Client",
+        customerEmailAdress: client?.email || "",
+      },
+      paymentChannel: {
+        channel: "MOBILEMONEY",
+        provider,
+        walletID: phone,
+        callbackUrl,
+      },
+    }),
   });
+  const payload = await providerResponse.json().catch(() => ({}));
+  if (!providerResponse.ok) {
+    const providerMessage = typeof payload.message === "string" ? payload.message : typeof payload.error === "string" ? payload.error : "";
+    return NextResponse.json({ error: providerMessage || "MaishaPay a refusé la demande de paiement.", details: payload }, { status: 502 });
+  }
+  const providerStatus = String(payload.status || payload.transactionStatus || "pending").toLowerCase();
+  if (["failed", "cancelled", "canceled", "refused", "rejected"].includes(providerStatus)) {
+    return NextResponse.json({ error: typeof payload.message === "string" ? payload.message : "MaishaPay n'a pas accepté la demande de paiement.", details: payload }, { status: 502 });
+  }
+
+  const { error: transactionError } = await supabase.from("payment_transactions").update({
+    provider_status: providerStatus,
+    metadata: { ...payload, phone, provider },
+    updated_at: new Date().toISOString(),
+  }).eq("id", transaction.id);
+  if (transactionError) return NextResponse.json({ error: "Paiement MaishaPay envoyé, mais son suivi n'a pas pu être enregistré." }, { status: 502 });
+
+  return NextResponse.json({ success: true, reference: token, provider, status: providerStatus, awaitingConfirmation: true });
 }

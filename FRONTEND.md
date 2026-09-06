@@ -211,7 +211,7 @@ Le front nécessite notamment :
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` ;
 - `NEXT_PUBLIC_APP_URL` ;
 - les variables Brevo pour les emails ;
-- `MAISHA_API_KEY`, `MAISHA_API_SECRET` et `MAISHA_API_URL` ;
+- `MAISHA_PUBLIC_API_KEY`, `MAISHA_API_SECRET_KEY` et `MAISHA_API_URL` ;
 - `SUPABASE_SERVICE_ROLE_KEY` et `PAYMENT_WEBHOOK_SECRET` côté serveur.
 
 Après une modification de `.env.local`, le serveur Next.js doit être redémarré. Les fichiers `.env` contenant des clés ne doivent pas être commités ni copiés dans la documentation.

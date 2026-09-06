@@ -21,9 +21,9 @@ Renseigner dans `.env.local` :
 - `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY` ;
 - `BREVO_API_KEY`, `MAIL_FROM_ADDRESS` et `MAIL_FROM_NAME` ;
 - `NEXT_PUBLIC_APP_URL` pour les liens contenus dans les emails.
-- `MAISHA_API_KEY`, `MAISHA_API_SECRET` et `MAISHA_API_URL` pour l'API officielle MaishaPay.
+- `MAISHA_PUBLIC_API_KEY`, `MAISHA_API_SECRET_KEY` et `MAISHA_API_URL` pour l'API officielle MaishaPay.
 - `MAISHA_GATEWAY_MODE=1` pour le mode live (`0` pour sandbox).
-- `MAISHA_API_KEY` et `MAISHA_API_SECRET` doivent être les identifiants délivrés par MaishaPay pour le compte marchand. Si Airtel et Vodacom ont des comptes MaishaPay séparés, utiliser `MAISHA_AIRTEL_API_KEY` / `MAISHA_AIRTEL_API_SECRET` et `MAISHA_VODACOM_API_KEY` / `MAISHA_VODACOM_API_SECRET`. `walletID` reste toujours le téléphone du client qui confirme par PIN ; le compte destinataire est associé aux identifiants MaishaPay, pas à un champ `merchantWalletID` arbitraire.
+- `MAISHA_PUBLIC_API_KEY` et `MAISHA_API_SECRET_KEY` doivent être les identifiants délivrés par MaishaPay pour le compte marchand. Le bouton envoyé dans l'e-mail ouvre `/paiement/<référence>` ; le serveur déclenche alors la demande Mobile Money sur le numéro du client. Le PIN est saisi uniquement sur le téléphone du client et n'est jamais transmis à KivuPort. `walletID` reste toujours le téléphone du client qui confirme par PIN ; le compte destinataire est associé aux identifiants MaishaPay, pas à un champ `merchantWalletID` arbitraire.
 - `MAISHA_MERCHANT_PHONE=0992720042` documente le compte marchand configuré dans l'espace MaishaPay. `walletID` reste toujours le téléphone du client qui confirme par PIN.
 - `MAISHA_CALLBACK_URL` doit être une URL HTTPS publique vers `/api/payments/webhook` afin que MaishaPay puisse notifier le résultat du paiement.
 
