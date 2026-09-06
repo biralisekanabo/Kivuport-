@@ -58,7 +58,7 @@ function ResetPasswordInner() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 px-4 py-10 text-[#182238]">
+    <main className="utility-page flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 px-4 py-10 text-[#182238]">
       <div className="mx-auto w-full max-w-md">
         <div className="overflow-hidden rounded-[2rem] bg-white p-10 shadow-[0_24px_70px_rgba(42,61,102,0.16)]">
           <Link href="/" className="mx-auto mb-8 flex w-fit items-center gap-2 font-bold tracking-tight">

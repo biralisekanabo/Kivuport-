@@ -36,7 +36,7 @@ const historyItems: HistoryItem[] = [
 
 export default function HistoryPage() {
   return (
-    <main className="min-h-screen bg-gray-50 text-[#182238]">
+    <main className="utility-page min-h-screen bg-gray-50 text-[#182238]">
       <header className="border-b border-gray-100 bg-white">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 font-bold tracking-tight">

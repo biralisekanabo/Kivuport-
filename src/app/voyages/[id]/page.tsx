@@ -269,7 +269,7 @@ export default function VoyageDetailPage() {
   // ===== STATES =====
   if (error) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <main className="voyage-detail-page min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl border border-red-100 p-8 max-w-md w-full text-center shadow-lg">
           <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">Erreur</h2>
@@ -288,7 +288,7 @@ export default function VoyageDetailPage() {
 
   if (isLoading || !voyage) {
     return (
-      <main className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+      <main className="voyage-detail-page min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
         <div className="max-w-4xl mx-auto">
           <SkeletonDetail />
         </div>
@@ -301,7 +301,7 @@ export default function VoyageDetailPage() {
 
   return (
     <motion.main
-      className="min-h-screen bg-gray-50"
+      className="voyage-detail-page min-h-screen bg-gray-50"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}

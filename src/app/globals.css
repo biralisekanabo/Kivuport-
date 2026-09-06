@@ -1314,6 +1314,120 @@ a:focus-visible {
   color: #a9bdc9 !important;
 }
 
+/* Voyage and reservation routes share the homepage's deep-ocean dark theme. */
+:root.dark .voyages-page,
+:root.dark .reservations-page,
+:root.dark .voyage-detail-page {
+  background: radial-gradient(circle at 85% 5%, #173b50 0, transparent 28rem), linear-gradient(145deg, #0b1620 0%, #102331 52%, #0f1b28 100%) !important;
+  color: var(--text-body);
+}
+
+:root.dark .voyages-page header,
+:root.dark .reservations-page header,
+:root.dark .voyage-detail-page header,
+:root.dark .voyages-page .bg-white\/80,
+:root.dark .reservations-page .bg-white\/80,
+:root.dark .voyage-detail-page .bg-white\/80 {
+  background-color: rgb(15 29 41 / .9) !important;
+  border-color: #294354 !important;
+}
+
+:root.dark .voyages-page .bg-white,
+:root.dark .reservations-page .bg-white,
+:root.dark .voyage-detail-page .bg-white,
+:root.dark .voyages-page .bg-gray-50,
+:root.dark .reservations-page .bg-gray-50,
+:root.dark .voyage-detail-page .bg-gray-50 {
+  background-color: #172c3d !important;
+  border-color: #294354 !important;
+}
+
+:root.dark .voyages-page .bg-gray-50,
+:root.dark .reservations-page .bg-gray-50,
+:root.dark .voyage-detail-page .bg-gray-50 {
+  background-color: #102331 !important;
+}
+
+:root.dark .voyages-page .text-gray-900,
+:root.dark .reservations-page .text-gray-900,
+:root.dark .voyage-detail-page .text-gray-900 {
+  color: #edf5f8 !important;
+}
+
+:root.dark .voyages-page .text-gray-700,
+:root.dark .reservations-page .text-gray-700,
+:root.dark .voyage-detail-page .text-gray-700,
+:root.dark .voyages-page .text-gray-600,
+:root.dark .reservations-page .text-gray-600,
+:root.dark .voyage-detail-page .text-gray-600,
+:root.dark .voyages-page .text-gray-500,
+:root.dark .reservations-page .text-gray-500,
+:root.dark .voyage-detail-page .text-gray-500 {
+  color: #a9bdc9 !important;
+}
+
+:root.dark .voyages-page input,
+:root.dark .voyages-page select,
+:root.dark .reservations-page input,
+:root.dark .reservations-page select,
+:root.dark .voyage-detail-page input,
+:root.dark .voyage-detail-page select {
+  background-color: #102331 !important;
+  border-color: #355264 !important;
+  color: #f1f5f9 !important;
+}
+
+:root.dark .voyages-page .hover\:bg-gray-100:hover,
+:root.dark .reservations-page .hover\:bg-gray-100:hover,
+:root.dark .voyage-detail-page .hover\:bg-gray-100:hover {
+  background-color: #213e50 !important;
+}
+
+:root.dark .voyages-page .border-gray-100,
+:root.dark .reservations-page .border-gray-100,
+:root.dark .voyage-detail-page .border-gray-100,
+:root.dark .voyages-page .border-gray-200,
+:root.dark .reservations-page .border-gray-200,
+:root.dark .voyage-detail-page .border-gray-200 {
+  border-color: #294354 !important;
+}
+
+:root.dark .utility-page {
+  background: linear-gradient(145deg, #0b1620 0%, #102331 52%, #0f1b28 100%) !important;
+  color: #edf5f8 !important;
+}
+
+:root.dark .dashboard-loading {
+  background: linear-gradient(145deg, #0b1620 0%, #102331 52%, #0f1b28 100%) !important;
+  color: #edf5f8 !important;
+}
+
+:root.dark .utility-page header,
+:root.dark .utility-page .bg-white,
+:root.dark .utility-page .bg-gray-50 {
+  background-color: #172c3d !important;
+  border-color: #294354 !important;
+}
+
+:root.dark .utility-page .bg-blue-50,
+:root.dark .utility-page .bg-emerald-50 {
+  background-color: #1d3a4d !important;
+}
+
+:root.dark .utility-page .text-gray-500,
+:root.dark .utility-page .text-gray-600,
+:root.dark .utility-page [class*="text-[#8992a1]"] {
+  color: #a9bdc9 !important;
+}
+
+:root.dark .utility-page h1,
+:root.dark .utility-page h2,
+:root.dark .utility-page h3,
+:root.dark .utility-page p,
+:root.dark .utility-page span {
+  border-color: #294354;
+}
+
 /* Final application-wide dark-mode pass for routes without a page wrapper. */
 :root.dark .site-nav,
 :root.dark .site-footer,

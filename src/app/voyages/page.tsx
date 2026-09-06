@@ -413,7 +413,7 @@ export default function VoyagesPage() {
 
   return (
     <motion.main
-      className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30"
+      className="voyages-page min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}

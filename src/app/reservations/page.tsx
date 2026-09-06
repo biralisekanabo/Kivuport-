@@ -630,7 +630,7 @@ export default function ReservationsPage() {
   // ===== LOADING =====
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50/30">
+      <div className="reservations-page min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50/30">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
@@ -653,7 +653,7 @@ export default function ReservationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <div className="reservations-page min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
       {/* ===== HEADER ===== */}
       <motion.header
         initial={{ y: -60 }}

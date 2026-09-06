@@ -89,9 +89,9 @@ export default function PaymentPage() {
     }
   }
 
-  if (!details) return <main className="dashboard-loading"><p>{message}</p></main>;
+  if (!details) return <main className="utility-page dashboard-loading"><p>{message}</p></main>;
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
+    <main className="utility-page min-h-screen flex items-center justify-center bg-slate-100 px-4">
       <form onSubmit={pay} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
         <h1 className="text-2xl font-bold text-slate-900">Paiement MaishaPay</h1>
         <p className="mt-2 text-sm text-slate-500">Référence : {details.reference}</p>
