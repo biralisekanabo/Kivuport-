@@ -402,6 +402,8 @@ function AddModal({
     e.preventDefault();
     if (validate()) {
       onSave(formData);
+      setFormData({});
+      setErrors({});
     }
   };
 

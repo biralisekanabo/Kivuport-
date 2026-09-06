@@ -154,6 +154,7 @@ export function SignupModal({ onClose, onLogin }: AuthModalProps) {
         }, 3000);
       } else if (data.session) {
         setStatus({ type: "success", message: "Compte créé et connecté !" });
+        setFormData({ name: "", email: "", phone: "", password: "" });
         if (data.user) {
           localStorage.setItem("user", JSON.stringify(data.user));
         }

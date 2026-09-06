@@ -27,6 +27,8 @@ export function ContactForm() {
     setStatus("sending");
     const body = `Nom : ${form.nom}\nEmail : ${form.email}\nSujet : ${form.sujet}\n\n${form.message}`;
     window.location.href = `mailto:kivuport@gmail.com?subject=${encodeURIComponent(form.sujet || "Contact KivuPort")}&body=${encodeURIComponent(body)}`;
+    setForm({ nom: "", email: "", sujet: "", message: "" });
+    setErrors({});
     setTimeout(() => setStatus("sent"), 300);
   };
 

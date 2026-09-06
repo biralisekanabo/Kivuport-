@@ -347,6 +347,7 @@ export function LoginModal({ onClose, onSignup }: LoginModalProps) {
       }
 
       setStatus({ type: "success", message: "Connexion réussie !" });
+      setFormData({ email: "", password: "" });
 
       if (data.user) {
         localStorage.setItem("user", JSON.stringify(data.user));

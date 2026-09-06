@@ -101,6 +101,23 @@ const values = [
 
 const teamMembers = [
   {
+    name: "Louange",
+    role: "Cheffe du projet",
+    phone: "0973668538",
+    location: "Bukavu, Kadutu",
+    skills: "Coordination & Vision du projet",
+    initials: "L",
+    photo: "/louange.jpeg",
+    gradient: "from-blue-600 to-cyan-700",
+    shadow: "shadow-cyan-500/20",
+    social: {
+      github: "",
+      linkedin: "",
+      twitter: "",
+    },
+    bio: "Cheffe du projet KivuPort, elle coordonne la vision, le développement et la mise en œuvre de la plateforme.",
+  },
+  {
     name: "Nzanzu Muanda Aristarque",
     role: "Développeur Backend",
     phone: "+243 983 379 962",

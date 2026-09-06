@@ -491,6 +491,8 @@ export default function ReservationsPage() {
     setSelectedVoyage("");
     setSelectedPavillon("");
     setCargoWeight("");
+    setName("");
+    setPhone("");
     await loadReservations(email);
   }
 

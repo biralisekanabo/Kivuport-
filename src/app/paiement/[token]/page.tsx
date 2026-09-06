@@ -81,6 +81,7 @@ export default function PaymentPage() {
         const detail = typeof data.details?.message === "string" ? ` ${data.details.message}` : "";
         throw new Error(`${data.error || "Le paiement a échoué."}${detail}`);
       }
+      setPhone("");
       setMessage("Transaction MaishaPay déclenchée. Confirmez avec votre PIN sur votre téléphone. Vérification automatique en cours...");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Le paiement a échoué.");
