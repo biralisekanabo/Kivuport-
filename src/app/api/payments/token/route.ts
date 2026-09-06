@@ -198,6 +198,8 @@ export async function POST(request: Request) {
 
   if (apiUrl && apiKey && apiSecret) {
     try {
+      const callbackUrl = process.env.MAISHA_CALLBACK_URL
+        || `${process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || ""}/api/payments/webhook`;
       const providerResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -220,6 +222,7 @@ export async function POST(request: Request) {
             provider,
             // MaishaPay expects the customer's wallet in international format.
             walletID: clientPhone,
+            ...(callbackUrl.startsWith("http") ? { callbackUrl } : {}),
           },
         }),
       });
@@ -237,15 +240,27 @@ export async function POST(request: Request) {
         );
       }
 
-      const payload = (await providerResponse.json().catch(() => ({}))) as { status?: string; reference?: string };
+      const payload = (await providerResponse.json().catch(() => ({}))) as Record<string, unknown>;
+      const providerStatus = String(payload.status || payload.transactionStatus || "pending").toLowerCase();
       await supabase
         .from("payment_transactions")
         .update({
-          provider_status: String(payload.status ?? "pending").toLowerCase(),
-          metadata: { ...(payload as Record<string, unknown>), phone: clientPhone },
+          provider_status: providerStatus,
+          metadata: { ...payload, phone: clientPhone },
           updated_at: new Date().toISOString(),
         })
         .eq("idpaiement", paymentId);
+
+      return NextResponse.json({
+        success: true,
+        alreadyPaid: false,
+        reference: externalReference,
+        amount: paymentAmount,
+        status: providerStatus,
+        provider,
+        phone: clientPhone,
+        providerResponse: payload,
+      });
     } catch (error) {
       console.error("❌ MaishaPay call failed:", error);
       return NextResponse.json({ error: "Le fournisseur de paiement n'est pas disponible pour le moment." }, { status: 502 });
