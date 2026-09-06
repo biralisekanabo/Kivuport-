@@ -9,6 +9,12 @@ function normalizePhone(phone: string) {
   return digits.startsWith("243") ? digits : `243${digits.replace(/^0/, "")}`;
 }
 
+function toWalletId(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("243") && digits.length === 12) return `0${digits.slice(3)}`;
+  return digits;
+}
+
 function detectProvider(phone: string) {
   const localNumber = phone.slice(3, 5);
   if (["81", "82", "83"].includes(localNumber)) return "MPESA";
@@ -166,7 +172,7 @@ export async function POST(request: Request) {
 
     const payload = {
       transactionReference,
-      gatewayMode: "1",
+      gatewayMode: process.env.MAISHA_GATEWAY_MODE || "1",
       publicApiKey: maishaApiKey,
       secretApiKey: maishaApiSecret,
       order: {
@@ -178,7 +184,7 @@ export async function POST(request: Request) {
       paymentChannel: {
         channel: "MOBILEMONEY",
         provider,
-        walletID: `+${normalizedPhone}`,
+        walletID: toWalletId(cleaned),
         callbackUrl: `${appUrl}/api/payments/webhook`,
       },
     };
