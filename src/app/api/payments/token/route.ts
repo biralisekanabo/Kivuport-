@@ -1,231 +1,179 @@
+// api/payments/webhook/route.ts
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { resolveAppUrl } from "@/lib/urls";
 
 export const runtime = "nodejs";
 
-function normalizePhone(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  return digits.startsWith("243") ? digits : `243${digits.replace(/^0/, "")}`;
-}
+type PaymentWebhook = {
+  externalReference?: unknown;
+  status?: unknown;
+  amount?: unknown;
+  transactionReference?: unknown;
+  originatingTransactionId?: unknown;
+  transactionStatus?: unknown;
+  order?: { amount?: unknown };
+  metadata?: unknown;
+};
 
-function toWalletId(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("243") && digits.length === 12) return `0${digits.slice(3)}`;
-  return digits;
-}
-
-function detectProvider(phone: string) {
-  const localNumber = phone.slice(3, 5);
-  if (["81", "82", "83"].includes(localNumber)) return "MPESA";
-  if (["84", "85", "89"].includes(localNumber)) return "ORANGE";
-  if (["97", "98", "99"].includes(localNumber)) return "AIRTEL";
-  if (["50", "51", "52", "53", "54", "55", "56", "57", "58", "59"].includes(localNumber)) return "AFRICELL";
-  if (["90", "91"].includes(localNumber)) return "AFRICELL";
-  return null;
-}
-
-async function findReservation(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
-  token: string
-) {
-  // 1. Par token_paiement (flux client)
-  const { data: byToken } = await supabase
-    .from('reservations')
-    .select('id, prix_total, statut, tentative_paiement, token_expire_at, client:client(nom, prenom, email, telephone)')
-    .eq('token_paiement', token)
-    .single();
-
-  if (byToken) return byToken as { id: number; prix_total: number; statut: string; tentative_paiement: number; token_expire_at: string | null; client: unknown };
-
-  // 2. Par external_reference (flux email)
-  const { data: byRef } = await supabase
-    .from('payment_transactions' as never)
-    .select('idpaiement')
-    .eq('external_reference', token)
-    .single();
-
-  if (byRef) {
-    const { data: paiement } = await supabase
-      .from('paiements' as never)
-      .select('idreservation')
-      .eq('id', (byRef as { idpaiement: number }).idpaiement)
-      .single();
-    if (paiement) {
-      const reservationId = (paiement as { idreservation: number }).idreservation;
-      const { data: reservation } = await supabase
-        .from('reservations')
-        .select('id, prix_total, statut, tentative_paiement, token_expire_at, client:client(nom, prenom, email, telephone)')
-        .eq('id', reservationId)
-        .single();
-      if (reservation) return reservation as { id: number; prix_total: number; statut: string; tentative_paiement: number; token_expire_at: string | null; client: unknown };
-    }
+function validSignature(rawBody: string, signature: string | null, secret: string): boolean {
+  if (!signature) return false;
+  try {
+    const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+    const received = Buffer.from(signature, "hex");
+    const expectedBytes = Buffer.from(expected, "hex");
+    return received.length === expectedBytes.length && timingSafeEqual(received, expectedBytes);
+  } catch {
+    return false;
   }
-
-  return null;
 }
 
 export async function POST(request: Request) {
+  const secret = process.env.MAISHA_WEBHOOK_SECRET;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  
+  if (!serviceRoleKey || !supabaseUrl) {
+    return NextResponse.json({ error: "Payment webhook is not configured." }, { status: 503 });
+  }
+
+  const rawBody = await request.text();
+
+  // Vérification de la signature (optionnelle)
+  if (secret) {
+    const signature = request.headers.get("x-payment-signature") || request.headers.get("x-hub-signature-256");
+    if (signature && !validSignature(rawBody, signature, secret)) {
+      return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
+    }
+  }
+
+  let body: PaymentWebhook;
   try {
-    const body = await request.json();
-    const { token, method } = body;
-
-    if (!token) {
-      return NextResponse.json({ error: "Token requis" }, { status: 400 });
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } }
-    );
-
-    const reservation = await findReservation(supabase, token);
-
-    if (!reservation) {
-      return NextResponse.json({ error: "Réservation introuvable" }, { status: 404 });
-    }
-
-    if (reservation.statut === 'arrive') {
-      return NextResponse.json({
-        alreadyPaid: true,
-        message: "Cette réservation est déjà payée."
-      });
-    }
-
-    if (reservation.token_expire_at && new Date() > new Date(reservation.token_expire_at)) {
-      return NextResponse.json({ error: "Le lien de paiement a expiré (24h)" }, { status: 400 });
-    }
-
-    if (method !== "maisha_pay") {
-      return NextResponse.json({ error: "Seul MaishaPay est accepté." }, { status: 400 });
-    }
-
-    const client = reservation.client as { nom?: string; prenom?: string; email?: string; telephone?: string } | null;
-    const cleaned = client?.telephone?.replace(/\D/g, "") || "";
-    const isValidPhone = (cleaned.startsWith("243") && cleaned.length === 12) ||
-      (cleaned.startsWith("0") && cleaned.length === 10);
-    if (!isValidPhone) {
-      return NextResponse.json({ error: "Le client n'a pas de numéro de téléphone valide enregistré." }, { status: 422 });
-    }
-
-    const maishaApiKey = process.env.MAISHA_API_KEY;
-    const maishaApiSecret = process.env.MAISHA_API_SECRET;
-    const maishaApiUrl = process.env.MAISHA_API_URL;
-    if (!maishaApiKey || !maishaApiSecret || !maishaApiUrl) {
-      return NextResponse.json({
-        error: "MaishaPay n'est pas encore configuré : les clés et l'URL API sont requis.",
-      }, { status: 503 });
-    }
-
-    const normalizedPhone = normalizePhone(cleaned);
-    const provider = detectProvider(normalizedPhone);
-    if (!provider) {
-      return NextResponse.json({ error: "Opérateur mobile non pris en charge." }, { status: 400 });
-    }
-
-    const customerName = [client?.prenom, client?.nom].filter(Boolean).join(" ") || "Client KivuPort";
-    const appUrl = resolveAppUrl(request);
-
-    const { data: currentTransaction } = await supabase
-      .from("payment_transactions")
-      .select("idpaiement, provider_status")
-      .eq("external_reference", token)
-      .maybeSingle();
-
-    if (currentTransaction?.provider_status === "pending") {
-      return NextResponse.json({
-        success: true,
-        status: "pending",
-        reference: token,
-        amount: reservation.prix_total,
-        message: "Une demande de paiement est déjà en cours. Confirmez-la sur votre téléphone.",
-      });
-    }
-
-    let transactionReference = token;
-    if (currentTransaction) {
-      const { data: retryPayment, error: retryPaymentError } = await supabase
-        .from("paiements")
-        .insert({
-          montant: reservation.prix_total,
-          devise: "CDF",
-          mode_paiement: "MOMO",
-          date_paiement: new Date().toISOString(),
-          statut: "en_attente",
-          idreservation: reservation.id,
-        })
-        .select("id")
-        .single();
-      if (retryPaymentError || !retryPayment) {
-        return NextResponse.json({ error: retryPaymentError?.message || "Impossible de créer une nouvelle tentative." }, { status: 409 });
-      }
-      transactionReference = `KP-${reservation.id}-${crypto.randomUUID().replaceAll("-", "")}`;
-      const { error: transactionError } = await supabase
-        .from("payment_transactions")
-        .insert({ idpaiement: retryPayment.id, external_reference: transactionReference, provider: "maisha_pay" });
-      if (transactionError) {
-        return NextResponse.json({ error: transactionError.message }, { status: 409 });
-      }
-    }
-
-    const payload = {
-      transactionReference,
-      gatewayMode: process.env.MAISHA_GATEWAY_MODE || "1",
-      publicApiKey: maishaApiKey,
-      secretApiKey: maishaApiSecret,
-      order: {
-        amount: String(reservation.prix_total),
-        currency: "CDF",
-        customerFullName: customerName,
-        customerEmailAdress: client?.email || "",
-      },
-      paymentChannel: {
-        channel: "MOBILEMONEY",
-        provider,
-        walletID: toWalletId(cleaned),
-        callbackUrl: `${appUrl}/api/payments/webhook`,
-      },
-    };
-
-    const response = await fetch(maishaApiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30_000),
-    });
-    const result = await response.json().catch(() => null);
-
-    if (!response.ok || (result && typeof result === "object" && "errors" in result)) {
-      await supabase
-        .from("reservations")
-        .update({ tentative_paiement: (reservation.tentative_paiement || 0) + 1 })
-        .eq("id", reservation.id);
-      const errorMessage = result && typeof result === "object" && "message" in result && typeof result.message === "string"
-        ? result.message
-        : "MaishaPay a refusé la demande de paiement.";
-      console.error("[MAISHAPAY_ERROR]", response.status, JSON.stringify(result));
-      return NextResponse.json({ error: errorMessage }, { status: 502 });
-    }
-
-    const responseData = result && typeof result === "object" && "data" in result ? result.data : result;
-    const providerReference = responseData && typeof responseData === "object"
-      ? ("transactionId" in responseData ? responseData.transactionId : "reference" in responseData ? responseData.reference : null)
-      : null;
-
-    return NextResponse.json({
-      success: true,
-      status: "pending",
-      reference: transactionReference,
-      providerReference,
-      amount: reservation.prix_total,
-      message: "Demande envoyée. Confirmez le paiement sur votre téléphone.",
-    });
-
+    body = JSON.parse(rawBody) as PaymentWebhook;
   } catch {
-    return NextResponse.json({
-      error: "Une erreur inattendue est survenue"
-    }, { status: 500 });
+    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+  }
+
+  // Extraction des données
+  const externalReference = [body.externalReference, body.transactionReference, body.originatingTransactionId]
+    .find((value): value is string => typeof value === "string" && value.length > 0);
+  
+  const providerStatus = body.status || body.transactionStatus;
+  const rawAmount = body.amount ?? body.order?.amount;
+  const amount = typeof rawAmount === "number" ? rawAmount : typeof rawAmount === "string" ? Number(rawAmount) : NaN;
+
+  if (!externalReference || typeof providerStatus !== "string" || !Number.isFinite(amount)) {
+    console.error("❌ Données manquantes:", { externalReference, providerStatus, amount });
+    return NextResponse.json({ error: "A payment reference, status and numeric amount are required." }, { status: 400 });
+  }
+
+  // ✅ Vérifier que c'est bien une transaction de kivuport (préfixe KP-)
+  if (!externalReference.startsWith("KP-")) {
+    console.log(`⚠️ Transaction ignorée (projet différent): ${externalReference}`);
+    return NextResponse.json({ success: true, ignored: true, reason: "not_kivuport_project" });
+  }
+
+  console.log(`✅ Webhook reçu pour kivuport: ${externalReference}, status: ${providerStatus}`);
+
+  // Créer le client Supabase
+  const supabase = createClient(supabaseUrl, serviceRoleKey, { 
+    auth: { persistSession: false, autoRefreshToken: false } 
+  });
+
+  try {
+    // 1. Trouver la transaction dans payment_transactions
+    const { data: transaction, error: transactionError } = await supabase
+      .from("payment_transactions")
+      .select("idpaiement")
+      .eq("external_reference", externalReference)
+      .single();
+
+    if (transactionError || !transaction) {
+      console.error("❌ Transaction non trouvée:", externalReference);
+      return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+    }
+
+    // 2. Mettre à jour le statut de la transaction
+    const { error: updateError } = await supabase
+      .from("payment_transactions")
+      .update({
+        provider_status: providerStatus.toLowerCase(),
+        provider_amount: amount,
+        provider_metadata: body.metadata || {},
+        updated_at: new Date().toISOString()
+      })
+      .eq("external_reference", externalReference);
+
+    if (updateError) {
+      console.error("❌ Erreur mise à jour transaction:", updateError);
+      return NextResponse.json({ error: updateError.message }, { status: 409 });
+    }
+
+    // 3. Si le paiement est réussi, mettre à jour le paiement et la réservation
+    if (providerStatus.toLowerCase() === "success" || providerStatus.toLowerCase() === "completed") {
+      // Mettre à jour le paiement
+      const { error: paiementError } = await supabase
+        .from("paiements")
+        .update({
+          statut: "payé",
+          date_paiement: new Date().toISOString(),
+          reference_externe: externalReference
+        })
+        .eq("id", transaction.idpaiement);
+
+      if (paiementError) {
+        console.error("❌ Erreur mise à jour paiement:", paiementError);
+        return NextResponse.json({ error: paiementError.message }, { status: 409 });
+      }
+
+      // Récupérer la réservation associée
+      const { data: paiement } = await supabase
+        .from("paiements")
+        .select("idreservation")
+        .eq("id", transaction.idpaiement)
+        .single();
+
+      if (paiement) {
+        // Mettre à jour la réservation
+        const { error: reservationError } = await supabase
+          .from("reservations")
+          .update({
+            statut: "arrive",
+            token_paiement: null,
+            token_expire_at: null
+          })
+          .eq("id", paiement.idreservation);
+
+        if (reservationError) {
+          console.error("❌ Erreur mise à jour réservation:", reservationError);
+          return NextResponse.json({ error: reservationError.message }, { status: 409 });
+        }
+      }
+    }
+
+    // 4. Si le paiement a échoué, incrémenter les tentatives
+    if (providerStatus.toLowerCase() === "failed" || providerStatus.toLowerCase() === "cancelled") {
+      const { data: paiement } = await supabase
+        .from("paiements")
+        .select("idreservation")
+        .eq("id", transaction.idpaiement)
+        .single();
+
+      if (paiement) {
+        await supabase
+          .from("reservations")
+          .update({
+            tentative_paiement: supabase.rpc('increment_tentative', { row_id: paiement.idreservation })
+          })
+          .eq("id", paiement.idreservation);
+      }
+    }
+
+    console.log(`✅ Webhook traité avec succès pour ${externalReference}`);
+    return NextResponse.json({ success: true });
+
+  } catch (error) {
+    console.error("❌ Erreur traitement webhook:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

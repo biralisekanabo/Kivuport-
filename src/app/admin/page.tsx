@@ -3034,15 +3034,14 @@ export default function AdminPage() {
     }
   };
 
-  // ===== MODE SOMBRE =====
+  // Follow the device preference; the shared theme component updates the root class.
   useEffect(() => {
-    const saved = localStorage.getItem("kivuport-dark-mode");
-    setIsDark(saved === "1");
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncTheme = () => setIsDark(media.matches);
+    syncTheme();
+    media.addEventListener("change", syncTheme);
+    return () => media.removeEventListener("change", syncTheme);
   }, []);
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDark);
-    localStorage.setItem("kivuport-dark-mode", isDark ? "1" : "0");
-  }, [isDark]);
 
   // ===== FONCTIONS D'AJOUT =====
   const handleAddBoat = async (formData: any) => {
@@ -3528,6 +3527,12 @@ export default function AdminPage() {
   }
 
   const activeNavigation = navigation.find((n) => n.id === section);
+  const toggleAdminTheme = () => {
+    const nextDark = !isDark;
+    setIsDark(nextDark);
+    document.documentElement.classList.toggle("dark", nextDark);
+    document.documentElement.style.colorScheme = nextDark ? "dark" : "light";
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -3538,7 +3543,7 @@ export default function AdminPage() {
         setIsSidebarOpen={setIsSidebarOpen}
         pendingReservations={pendingReservations}
         isDark={isDark}
-        toggleDark={() => setIsDark((v) => !v)}
+        toggleDark={toggleAdminTheme}
         onLogout={logout}
       />
 
@@ -3571,7 +3576,7 @@ export default function AdminPage() {
               <button
                 className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
                 type="button"
-                onClick={() => setIsDark((v) => !v)}
+                onClick={toggleAdminTheme}
                 title={isDark ? "Mode clair" : "Mode sombre"}
               >
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}

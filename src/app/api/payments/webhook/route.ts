@@ -28,15 +28,17 @@ function validSignature(rawBody: string, signature: string | null, secret: strin
 }
 
 export async function POST(request: Request) {
-  const secret = process.env.PAYMENT_WEBHOOK_SECRET;
+  const secret = process.env.MAISHAPAY_WEBHOOK_SECRET;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  
   if (!serviceRoleKey || !supabaseUrl) {
     return NextResponse.json({ error: "Payment webhook is not configured." }, { status: 503 });
   }
 
   const rawBody = await request.text();
 
+  // Vérification de la signature (optionnelle mais recommandée)
   if (secret) {
     const signature = request.headers.get("x-payment-signature") || request.headers.get("x-hub-signature-256");
     if (signature && !validSignature(rawBody, signature, secret)) {
@@ -50,22 +52,48 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
   }
+
+  // Extraction des données
   const externalReference = [body.externalReference, body.transactionReference, body.originatingTransactionId]
     .find((value): value is string => typeof value === "string" && value.length > 0);
+  
   const providerStatus = body.status || body.transactionStatus;
   const rawAmount = body.amount ?? body.order?.amount;
   const amount = typeof rawAmount === "number" ? rawAmount : typeof rawAmount === "string" ? Number(rawAmount) : NaN;
+
   if (!externalReference || typeof providerStatus !== "string" || !Number.isFinite(amount)) {
     return NextResponse.json({ error: "A payment reference, status and numeric amount are required." }, { status: 400 });
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  // Vérifier que c'est bien une transaction de kivuport
+  if (!externalReference.startsWith("KIVUPORT-")) {
+    // Ce n'est pas une transaction de kivuport, on ignore
+    console.log(`⚠️ Transaction ignorée (projet différent): ${externalReference}`);
+    return NextResponse.json({ success: true, ignored: true, reason: "not_kivuport_project" });
+  }
+
+  console.log(`✅ Transaction reçue pour kivuport: ${externalReference}`);
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, { 
+    auth: { persistSession: false, autoRefreshToken: false } 
+  });
+
+  // Appel à votre fonction Supabase
   const { data, error } = await supabase.rpc("process_kivuport_payment_webhook", {
     p_external_reference: externalReference,
     p_provider_status: providerStatus.toLowerCase(),
     p_amount: amount,
-    p_metadata: body.metadata && typeof body.metadata === "object" ? body.metadata : {},
+    p_metadata: {
+      ...(body.metadata && typeof body.metadata === "object" ? body.metadata : {}),
+      project: "kivuport",
+    },
   });
-  if (error) return NextResponse.json({ error: error.message }, { status: 409 });
+
+  if (error) {
+    console.error("❌ Erreur Supabase:", error);
+    return NextResponse.json({ error: error.message }, { status: 409 });
+  }
+
+  console.log("✅ Webhook traité avec succès");
   return NextResponse.json({ success: true, result: data?.[0] ?? null });
 }

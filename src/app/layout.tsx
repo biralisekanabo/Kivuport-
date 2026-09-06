@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { Chatbot } from "@/app/components/chatbot";
+import { SystemTheme } from "@/app/components/system-theme";
 
 export const metadata: Metadata = {
   title: "KivuPort | Gestion maritime",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
+        <SystemTheme />
         {children}
         <Chatbot />
         <Toaster position="top-right" closeButton richColors duration={4500} />

@@ -901,3 +901,85 @@ button, input, select, textarea { max-width: 100%; }
   .dashboard-header-actions .dashboard-admin-link { font-size: 0; }
   .dashboard-header-actions .dashboard-admin-link svg { margin: 0; }
 }
+
+/* Device theme: light by default, dark when the phone requests it. */
+:root.dark {
+  color-scheme: dark;
+  --background: #0f1720;
+  --foreground: #e5edf2;
+  --ink: #e5edf2;
+  --muted: #9caeba;
+  --line: #293846;
+}
+
+:root.dark body,
+:root.dark .home-page,
+:root.dark .dashboard-page,
+:root.dark .travel-page,
+:root.dark .settings-page,
+:root.dark .booking-page,
+:root.dark .admin-shell {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+:root.dark .dashboard-card,
+:root.dark .travel-card,
+:root.dark .booking-form,
+:root.dark .booking-list,
+:root.dark .settings-form,
+:root.dark .preferences-card,
+:root.dark .admin-topbar,
+:root.dark .admin-card,
+:root.dark .service-grid article {
+  border-color: var(--line);
+  background: #17232e;
+  color: var(--foreground);
+}
+
+:root.dark .dashboard-card h1,
+:root.dark .dashboard-card h2,
+:root.dark .dashboard-card h3,
+:root.dark .travel-card h2,
+:root.dark .settings-content h1,
+:root.dark .travel-content h1,
+:root.dark .booking-content h1 {
+  color: var(--foreground);
+}
+
+:root.dark .site-nav,
+:root.dark .google-submit,
+:root.dark .auth-modal,
+:root.dark .admin-modal,
+:root.dark .admin-create-modal {
+  border-color: var(--line);
+  background: #17232e;
+  color: var(--foreground);
+}
+
+/* The administration sidebar stays white in both themes. */
+.admin-sidebar {
+  border-right-color: #dce5ec !important;
+  background: #ffffff !important;
+  color: #17324b;
+}
+.admin-sidebar strong,
+.admin-sidebar span,
+.admin-sidebar .admin-sidebar-heading {
+  color: #17324b;
+}
+.admin-sidebar button {
+  color: #536779;
+}
+.admin-sidebar button:hover,
+.admin-sidebar button.is-active {
+  color: #17324b;
+  background: #e8f2f8;
+}
+.admin-sidebar button.is-active svg,
+.admin-sidebar button:hover svg {
+  color: #1268b3;
+}
+.admin-sidebar .admin-sidebar-heading {
+  color: #74899a;
+}
