@@ -1,467 +1,198 @@
 "use client";
 
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  ArrowRight,
-  Menu,
-  Ship,
-  X,
-  User,
-  LogIn,
-  UserPlus,
   Anchor,
-  Globe,
-  ChevronDown,
-  Sparkles,
-  Search,
   Compass,
-  CalendarDays,
-  ShieldCheck,
-  Phone,
-  Mail,
-  MapPin,
-  Sun,
+  HelpCircle,
+  History,
+  Home,
+  Info,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Menu,
   Moon,
   Settings,
-  HelpCircle,
-  LogOut,
-  UserCircle,
-  History,
+  Ship,
+  Sun,
   Ticket,
-  Home,
-  LayoutDashboard,
-  Info,
-  type LucideIcon,
+  UserCircle,
+  UserPlus,
+  X,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { applyTheme, getStoredTheme, resolveTheme } from "@/lib/theme";
 
-type NavbarProps = { 
-  onLogin: () => void; 
+type NavbarProps = {
+  onLogin: () => void;
   onSignup: () => void;
   isAuthenticated?: boolean;
   user?: { name?: string; email?: string; avatar?: string } | null;
 };
 
+const navItems = [
+  { label: "Accueil", href: "/", icon: Home },
+  { label: "Destinations", href: "/#carte", icon: Compass },
+  { label: "Services", href: "/#services", icon: Anchor },
+  { label: "À propos", href: "/about", icon: Info },
+];
+
+const userItems = [
+  { label: "Mon tableau de bord", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Mes réservations", href: "/reservations", icon: Ticket },
+  { label: "Mon profil", href: "/profile", icon: UserCircle },
+  { label: "Historique", href: "/history", icon: History },
+  { label: "Paramètres", href: "/settings", icon: Settings },
+  { label: "Aide & support", href: "/help", icon: HelpCircle },
+];
+
 export function Navbar({ onLogin, onSignup, isAuthenticated = false, user = null }: NavbarProps) {
   const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [activeLink, setActiveLink] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [isUserOpen, setIsUserOpen] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Fermer les menus au clic extérieur
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    setTheme(resolveTheme(getStoredTheme()));
+    const handleThemeChange = (event: Event) => {
+      const preference = (event as CustomEvent<"light" | "dark" | "system">).detail || getStoredTheme();
+      setTheme(resolveTheme(preference));
+    };
+    window.addEventListener("kivuport-theme-change", handleThemeChange);
+    return () => window.removeEventListener("kivuport-theme-change", handleThemeChange);
+  }, []);
+
+  useEffect(() => {
+    const closeMenus = (event: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-        setIsUserMenuOpen(false);
-      }
-      if (menuRef.current && !menuRef.current.contains(event.target as Node) && buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
+        setIsUserOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", closeMenus);
+    return () => document.removeEventListener("mousedown", closeMenus);
   }, []);
 
-  // Détection du scroll
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Empêcher le scroll quand le menu est ouvert
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
+    document.body.style.overflow = isOpen ? "hidden" : "";
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = "";
     };
-  }, [isMenuOpen]);
+  }, [isOpen]);
 
-  const closeMenu = () => setIsMenuOpen(false);
-  const toggleMenu = () => setIsMenuOpen((prev) => !prev);
-  const openLogin = () => { closeMenu(); onLogin(); };
-  const openSignup = () => { closeMenu(); onSignup(); };
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    setTheme(next);
+  };
 
-  // ===== LIENS DE NAVIGATION =====
-  const navItems = [
-    { label: "Accueil", href: "/", icon: Home },
-    { label: "Destinations", href: "/#carte", icon: Compass },
-    { label: "Services", href: "/#services", icon: Anchor },
-    { label: "À propos", href: "/about", icon: Info },
-  ];
+  const closeMobile = () => setIsOpen(false);
+  const themeLabel = theme === "dark" ? "Mode clair" : "Mode sombre";
 
-  type UserMenuLink = { label: string; icon: LucideIcon; href: string; onClick?: () => void };
-  type UserMenuDivider = { divider: true };
-  const userMenuItems: Array<UserMenuLink | UserMenuDivider> = [
-    { label: "Mon tableau de bord", icon: LayoutDashboard, href: "/dashboard" },
-    { label: "Mes réservations", icon: Ticket, href: "/reservations" },
-    { label: "Mon profil", icon: UserCircle, href: "/profile" },
-    { label: "Historique", icon: History, href: "/history" },
-    { label: "Paramètres", icon: Settings, href: "/settings" },
-    { label: "Aide & support", icon: HelpCircle, href: "/help" },
-    { divider: true },
-    { label: "Déconnexion", icon: LogOut, href: "#", onClick: () => {
-      // Gérer la déconnexion ici
-      console.log("Déconnexion");
-      router.push("/");
-    }},
-  ];
-  const userMenuLinks = userMenuItems.filter((item): item is UserMenuLink => !("divider" in item));
-  const userMenuDividers = userMenuItems.filter((item): item is UserMenuDivider => "divider" in item);
+  return (
+    <nav className="bg-white dark:bg-slate-950 fixed w-full z-50 top-0 start-0 border-b border-gray-200 dark:border-slate-800">
+      <div className="max-w-none grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center mx-auto px-3 sm:px-6 py-3">
+        <Link href="/" onClick={closeMobile} className="flex items-center space-x-3 rtl:space-x-reverse md:col-start-1">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-500/25">
+            <Ship size={20} />
+          </span>
+          <span className="self-center text-2xl text-gray-950 dark:text-white font-semibold whitespace-nowrap tracking-tight">KivuPort</span>
+        </Link>
 
-  // ===== RENDU MOBILE =====
-  const renderMobileMenu = () => (
-    <AnimatePresence>
-      {isMenuOpen && (
-        <motion.div
-          ref={menuRef}
-          className="fixed inset-0 top-0 left-0 w-full h-full bg-white z-[100] overflow-y-auto"
-          initial={{ opacity: 0, x: "100%" }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: "100%" }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          style={{ top: 0, left: 0 }}
-        >
-          <div className="min-h-screen px-6 py-4 pb-32">
-            {/* En-tête mobile avec bouton de fermeture */}
-            <div className="flex items-center justify-between mb-8">
-              <Link href="/" onClick={closeMenu} className="flex items-center gap-2.5">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white shadow-lg shadow-blue-500/40">
-                  <Ship size={20} className="relative z-10" />
-                </div>
-                <span className="font-bold text-lg text-gray-900">KivuPort</span>
-              </Link>
-              <button
-                onClick={closeMenu}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                aria-label="Fermer le menu"
-              >
-                <X size={24} className="text-gray-600" />
-              </button>
-            </div>
+        <div className="flex items-center justify-end gap-1.5 md:col-start-3 md:row-start-1">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="inline-flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label={`Activer le ${themeLabel.toLowerCase()}`}
+            title={themeLabel}
+          >
+            {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+          </button>
 
-            {/* Liens de navigation */}
-            <div className="space-y-1">
-              {navItems.map((item, index) => (
-                <motion.a
-                  key={item.href}
-                  href={item.href}
-                  onClick={closeMenu}
-                  className="flex items-center gap-4 px-4 py-4 text-lg font-medium text-gray-800 hover:text-blue-600 hover:bg-blue-50/50 rounded-xl transition-all"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <div className="p-2 bg-blue-50 rounded-xl">
-                    <item.icon size={18} className="text-blue-600" />
+          {isAuthenticated ? (
+            <div className="relative" ref={userMenuRef}>
+              {isUserOpen && (
+                <div className="absolute right-0 top-full mt-3 z-50 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl w-64 overflow-hidden" role="menu">
+                  <div className="px-5 py-5 border-b border-gray-200 dark:border-slate-700">
+                    <span className="block text-gray-900 dark:text-white font-semibold text-base">{user?.name || "Utilisateur"}</span>
+                    <span className="block text-gray-500 dark:text-gray-400 text-base truncate">{user?.email || ""}</span>
                   </div>
-                  {item.label}
-                  <ArrowRight size={16} className="ml-auto text-gray-300" />
-                </motion.a>
-              ))}
-            </div>
-
-            <div className="h-px bg-gray-100 my-6" />
-
-            {/* Actions principales */}
-            <div className="space-y-3">
-              {isAuthenticated ? (
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-2xl p-4">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-500/25">
-                      {user?.name?.[0] || "U"}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{user?.name || "Utilisateur"}</p>
-                      <p className="text-xs text-gray-500">{user?.email || "user@email.com"}</p>
-                    </div>
+                  <div className="p-3">
+                    {userItems.map((item) => (
+                      <Link key={item.href} href={item.href} onClick={() => setIsUserOpen(false)} className="flex items-center w-full px-2.5 py-3 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg">
+                        {item.label}
+                      </Link>
+                    ))}
+                    <button type="button" onClick={() => router.push("/")} className="flex items-center w-full px-2.5 py-3 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg">
+                      Déconnexion
+                    </button>
                   </div>
-                  <Link
-                    href="/dashboard"
-                    className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors shadow-sm"
-                    onClick={closeMenu}
-                  >
-                    <LayoutDashboard size={18} className="text-blue-500" />
-                    Accéder au tableau de bord
-                    <ArrowRight size={14} className="ml-auto text-gray-300" />
-                  </Link>
                 </div>
-              ) : (
-                <>
-                  <motion.button
-                    type="button"
-                    onClick={openLogin}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-4 text-base font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <LogIn size={18} />
-                    Se connecter
-                  </motion.button>
-
-                  <motion.button
-                    type="button"
-                    onClick={openSignup}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-4 text-base font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl transition-all shadow-lg shadow-blue-500/30"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 }}
-                  >
-                    <UserPlus size={18} />
-                    Créer un compte
-                    <ArrowRight size={16} />
-                  </motion.button>
-                </>
               )}
             </div>
-
-            {/* Contact rapide */}
-            <div className="mt-8 p-4 bg-gray-50 rounded-2xl">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Contact</p>
-              <div className="space-y-2">
-                <a href="tel:+243995910469" className="flex items-center gap-3 text-sm text-gray-600 hover:text-blue-600 transition-colors">
-                  <Phone size={16} className="text-blue-500" />
-                  +243 995 910 469
-                </a>
-                <a href="mailto:kivuport@gmail.com" className="flex items-center gap-3 text-sm text-gray-600 hover:text-blue-600 transition-colors">
-                  <Mail size={16} className="text-blue-500" />
-                  kivuport@gmail.com
-                </a>
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <MapPin size={16} className="text-blue-500" />
-                  Goma, RDC
-                </div>
-              </div>
+          ) : (
+            <div className="hidden md:flex items-center gap-2">
+              <button type="button" onClick={onLogin} className="inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800">
+                <LogIn size={16} /> Connexion
+              </button>
+              <button type="button" onClick={onSignup} className="inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700">
+                <UserPlus size={16} /> Créer un compte
+              </button>
             </div>
+          )}
 
-            {/* Footer mobile */}
-            <div className="mt-8 flex items-center justify-between text-xs text-gray-400">
-              <span>© {new Date().getFullYear()} KivuPort</span>
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                  En ligne
-                </span>
-                <span className="text-[10px]">|</span>
-                <span>Goma</span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  // ===== RENDU DESKTOP =====
-  const renderDesktopNav = () => (
-    <nav className="hidden md:flex items-center gap-1" aria-label="Navigation principale">
-      {navItems.map((item, index) => (
-        <motion.a
-          key={item.href}
-          href={item.href}
-          onClick={() => setActiveLink(item.href)}
-          className={`relative px-4 py-2 text-sm font-medium transition-all duration-300 rounded-xl ${
-            activeLink === item.href
-              ? "text-blue-700 bg-blue-50/80"
-              : "text-gray-600 hover:text-blue-600 hover:bg-blue-50/50"
-          }`}
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 + index * 0.05 }}
-          whileHover={{ y: -1 }}
-        >
-          <span className="flex items-center gap-1.5">
-            <item.icon size={14} className="opacity-60" />
-            {item.label}
-          </span>
-        </motion.a>
-      ))}
-
-      <div className="w-px h-6 bg-gray-200 mx-2" />
-
-      {isAuthenticated ? (
-        <div className="relative" ref={userMenuRef}>
-          <motion.button
+          <button
             type="button"
-            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-all"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              if (isAuthenticated) setIsUserOpen((open) => !open);
+              else onLogin();
+            }}
+            className="hidden md:flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-gray-200 dark:border-slate-700 bg-gray-100 dark:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-950"
+            aria-label={isAuthenticated ? "Ouvrir le menu utilisateur" : "Se connecter"}
+            title={isAuthenticated ? "Menu utilisateur" : "Se connecter"}
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-md shadow-blue-500/20">
-              {user?.name?.[0] || "U"}
-            </div>
-            <ChevronDown size={14} className={`text-gray-400 transition-transform duration-300 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
-          </motion.button>
-
-          <AnimatePresence>
-            {isUserMenuOpen && (
-              <motion.div
-                className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl shadow-black/10 border border-gray-100 overflow-hidden"
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50/50 border-b border-gray-100">
-                  <p className="font-semibold text-gray-900 text-sm">{user?.name || "Utilisateur"}</p>
-                  <p className="text-xs text-gray-500 truncate">{user?.email || "user@email.com"}</p>
-                </div>
-
-                <div className="py-1">
-                  {userMenuDividers.map((_, index) => (
-                    <div key={`divider-${index}`} className="h-px bg-gray-100 my-1" />
-                  ))}
-                  {userMenuLinks.map((item, index) => (
-                    <motion.a
-                      key={item.label}
-                      href={item.href}
-                      onClick={item.onClick || (() => { setIsUserMenuOpen(false); })}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:text-blue-600 hover:bg-blue-50/50 transition-colors"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.02 }}
-                    >
-                      <item.icon size={16} className="text-gray-400" />
-                      {item.label}
-                    </motion.a>
-                  ))}
-                </div>
-              </motion.div>
+            {user?.avatar ? (
+              <img className="h-full w-full object-cover" src={user.avatar} alt="" />
+            ) : (
+              <img className="h-full w-full object-cover" src="/Blessing.jpeg" alt="Profil KivuPort" />
             )}
-          </AnimatePresence>
+          </button>
+
+          <button type="button" onClick={() => setIsOpen((open) => !open)} className="inline-flex items-center justify-center p-2 w-10 h-10 text-gray-600 dark:text-gray-200 rounded-lg md:hidden hover:bg-gray-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-controls="navbar-user" aria-expanded={isOpen}>
+            <span className="sr-only">{isOpen ? "Fermer le menu" : "Ouvrir le menu"}</span>
+            {isOpen ? <X size={23} /> : <Menu size={23} />}
+          </button>
         </div>
-      ) : (
-        <>
-          <motion.button
-            type="button"
-            onClick={openLogin}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors rounded-xl hover:bg-blue-50/50"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <LogIn size={16} />
-            Connexion
-          </motion.button>
 
-          <motion.button
-            type="button"
-            onClick={openSignup}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl transition-all shadow-md shadow-blue-500/30 hover:shadow-lg hover:shadow-blue-500/40"
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.97 }}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <UserPlus size={16} />
-            <span className="hidden lg:inline">Créer un compte</span>
-            <span className="lg:hidden">S'inscrire</span>
-          </motion.button>
-        </>
-      )}
-    </nav>
-  );
-
-  // ===== RENDU PRINCIPAL =====
-  return (
-    <>
-      <motion.header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          isScrolled 
-            ? "bg-white/95 backdrop-blur-md shadow-lg shadow-black/5 border-b border-gray-100/50" 
-            : "bg-white/80 backdrop-blur-sm"
-        }`}
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-[72px]">
-            {/* ===== LOGO ===== */}
-            <Link 
-              href="/" 
-              className="flex items-center gap-2.5 group shrink-0"
-              aria-label="KivuPort, accueil"
-              onClick={closeMenu}
-            >
-              <motion.div
-                className="relative"
-                whileHover={{ rotate: -5, scale: 1.02 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl blur-md opacity-60 group-hover:opacity-100 transition-opacity" />
-                <div className="relative p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white shadow-lg shadow-blue-500/40">
-                  <Ship size={20} className="relative z-10" />
+        <div className={`${isOpen ? "block" : "hidden"} col-span-2 items-center justify-between w-full md:col-span-1 md:flex md:w-auto md:col-start-2 md:row-start-1`} id="navbar-user">
+          <ul className="font-medium flex flex-col p-4 md:p-0 mt-4 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-900 md:flex-row md:items-center md:gap-10 md:mt-0 md:border-0 md:bg-white md:dark:bg-slate-950">
+            {navItems.map((item, index) => (
+              <li key={item.href}>
+                <Link href={item.href} onClick={closeMobile} className={`flex items-center gap-2 py-2 px-3 rounded-lg text-lg text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-800 md:hover:bg-transparent md:dark:hover:bg-transparent md:hover:text-blue-600 ${index === 0 ? "text-blue-600 md:text-blue-600" : ""}`} aria-current={index === 0 ? "page" : undefined}>
+                  <item.icon size={15} className="md:hidden" />
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+            <li className="md:hidden border-t border-gray-200 dark:border-slate-700 mt-2 pt-2">
+              {isAuthenticated ? (
+                <>
+                  <Link href="/dashboard" onClick={closeMobile} className="flex items-center gap-2 py-2 px-3 text-gray-800 dark:text-gray-200"><LayoutDashboard size={15} /> Tableau de bord</Link>
+                  <button type="button" onClick={() => { closeMobile(); router.push("/"); }} className="flex items-center gap-2 w-full py-2 px-3 text-left text-gray-800 dark:text-gray-200"><LogOut size={15} /> Déconnexion</button>
+                </>
+              ) : (
+                <div className="flex flex-col gap-2 pt-2">
+                  <button type="button" onClick={() => { closeMobile(); onLogin(); }} className="flex items-center gap-2 py-2 px-3 text-blue-600"><LogIn size={15} /> Connexion</button>
+                  <button type="button" onClick={() => { closeMobile(); onSignup(); }} className="flex items-center gap-2 py-2 px-3 text-blue-600"><UserPlus size={15} /> Créer un compte</button>
                 </div>
-              </motion.div>
-              <div className="flex items-baseline">
-                <span className="font-bold text-xl text-gray-900 tracking-tight">
-                  KivuPort
-                </span>
-                <span className="ml-2 text-[10px] font-semibold text-blue-600 bg-blue-50/80 px-2 py-0.5 rounded-full border border-blue-200/50 hidden sm:inline">
-                  Goma
-                </span>
-              </div>
-            </Link>
-
-            {/* ===== DESKTOP NAVIGATION ===== */}
-            {renderDesktopNav()}
-
-            {/* ===== BOUTON MENU MOBILE ===== */}
-            <motion.button
-              ref={buttonRef}
-              className="md:hidden p-2.5 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-blue-50/50 transition-all relative z-[200]"
-              type="button"
-              aria-label={isMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
-              aria-expanded={isMenuOpen}
-              onClick={toggleMenu}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <AnimatePresence mode="wait">
-                {isMenuOpen ? (
-                  <motion.div
-                    key="close"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <X size={24} />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="menu"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Menu size={24} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.button>
-          </div>
+              )}
+            </li>
+          </ul>
         </div>
-      </motion.header>
-
-      {/* ===== MENU MOBILE ===== */}
-      {renderMobileMenu()}
-    </>
+      </div>
+    </nav>
   );
 }

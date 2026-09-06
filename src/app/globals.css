@@ -983,3 +983,133 @@ button, input, select, textarea { max-width: 100%; }
 .admin-sidebar .admin-sidebar-heading {
   color: #74899a;
 }
+
+/* Shared application theme surfaces. The light palette is the default; the
+   dark palette follows the device until the user chooses a navbar override. */
+:root {
+  --surface: #ffffff;
+  --surface-soft: #f5f8fb;
+  --surface-raised: #ffffff;
+  --text-strong: #102a43;
+  --text-body: #40566b;
+  --text-muted: #718296;
+  --focus-ring: #60a5fa;
+}
+
+:root.dark {
+  --surface: #0f1720;
+  --surface-soft: #141f2b;
+  --surface-raised: #1b2a38;
+  --text-strong: #f1f5f9;
+  --text-body: #d3dee8;
+  --text-muted: #a6b5c2;
+  --focus-ring: #7dd3fc;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  transition: background-color .25s ease, color .25s ease;
+}
+
+body {
+  min-width: 320px;
+}
+
+:root.dark .bg-white,
+:root.dark .bg-slate-50,
+:root.dark .bg-gray-50,
+:root.dark .bg-gray-100 {
+  background-color: var(--surface-raised) !important;
+}
+
+:root.dark .bg-white\/80,
+:root.dark .bg-white\/95 {
+  background-color: rgb(15 23 32 / .92) !important;
+}
+
+:root.dark .text-gray-900,
+:root.dark .text-gray-800,
+:root.dark .text-slate-900 {
+  color: var(--text-strong) !important;
+}
+
+:root.dark .text-gray-700,
+:root.dark .text-gray-600,
+:root.dark .text-slate-700 {
+  color: var(--text-body) !important;
+}
+
+:root.dark .text-gray-500,
+:root.dark .text-gray-400,
+:root.dark .text-slate-500,
+:root.dark .text-slate-400 {
+  color: var(--text-muted) !important;
+}
+
+:root.dark .border-gray-100,
+:root.dark .border-gray-200,
+:root.dark .border-slate-200,
+:root.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--line) !important;
+}
+
+:root.dark input,
+:root.dark textarea,
+:root.dark select {
+  border-color: var(--line);
+  background-color: #111d29;
+  color: var(--text-strong);
+}
+
+:root.dark input::placeholder,
+:root.dark textarea::placeholder {
+  color: #8799a8;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--focus-ring) 45%, transparent);
+  outline-offset: 2px;
+}
+
+:root.dark .admin-sidebar {
+  border-right-color: var(--line) !important;
+  background: #111d29 !important;
+  color: var(--text-body);
+}
+
+:root.dark .admin-sidebar strong,
+:root.dark .admin-sidebar span,
+:root.dark .admin-sidebar .admin-sidebar-heading {
+  color: var(--text-body) !important;
+}
+
+:root.dark .admin-sidebar button {
+  color: var(--text-muted);
+}
+
+:root.dark .admin-sidebar button:hover,
+:root.dark .admin-sidebar button.is-active {
+  color: var(--text-strong);
+  background: #203447;
+}
+
+:root.dark .shadow-sm,
+:root.dark .shadow-md,
+:root.dark .shadow-lg,
+:root.dark .shadow-xl,
+:root.dark .shadow-2xl {
+  --tw-shadow-color: rgb(0 0 0 / .35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html,
+  body {
+    transition: none;
+  }
+}

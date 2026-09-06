@@ -25,10 +25,25 @@ export async function POST(request: Request) {
   try {
     const normalizedEmail = email.trim().toLowerCase();
 
-    const { data: listData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    const userExists = listData?.users?.some(
-      (u) => u.email?.toLowerCase() === normalizedEmail
-    );
+    let userExists = false;
+    let page = 1;
+    do {
+      const { data: pageData, error: pageError } = await admin.auth.admin.listUsers({
+        page,
+        perPage: 1000,
+      });
+      if (pageError) {
+        return NextResponse.json(
+          { error: `Impossible de vérifier le compte: ${pageError.message}` },
+          { status: 502 }
+        );
+      }
+
+      const users = pageData?.users || [];
+      userExists = users.some((user) => user.email?.toLowerCase() === normalizedEmail);
+      if (userExists || users.length < 1000) break;
+      page += 1;
+    } while (page <= 100);
 
     if (!userExists) {
       return NextResponse.json({ success: true });
@@ -42,7 +57,7 @@ export async function POST(request: Request) {
       subject: `Votre code de vérification KivuPort : ${code}`,
       textContent:
         `Votre code de vérification est : ${code}\n\n` +
-        `Ce code est valable pendant 5 minutes.\n\n` +
+        `Ce code est valable pendant 60 secondes.\n\n` +
         `Si vous n'avez pas demandé la réinitialisation de votre mot de passe, ignorez cet email.\n\n` +
         `KivuPort — Port de Goma`,
       htmlContent: otpEmail(code),

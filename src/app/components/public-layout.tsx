@@ -13,7 +13,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
         onLogin={() => router.push("/login")}
         onSignup={() => router.push("/signup")}
       />
-      <main className="flex-1 pt-[72px]">{children}</main>
+      <main className="flex-1 pt-[68px]">{children}</main>
       <Footer />
     </div>
   );

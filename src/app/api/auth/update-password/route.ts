@@ -26,10 +26,6 @@ export async function POST(request: Request) {
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  if (!(await consumeOtp(normalizedEmail, code.trim()))) {
-    return NextResponse.json({ error: "Code invalide ou expiré. Veuillez demander un nouveau code." }, { status: 400 });
-  }
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceRoleKey) {
@@ -41,7 +37,11 @@ export async function POST(request: Request) {
   });
 
   try {
-    const { data: listData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const { data: listData, error: listError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (listError) {
+      return NextResponse.json({ error: listError.message }, { status: 502 });
+    }
+
     const user = listData?.users?.find((u) => u.email?.toLowerCase() === normalizedEmail);
 
     if (!user) {
@@ -54,6 +54,14 @@ export async function POST(request: Request) {
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 400 });
+    }
+
+    // Consume the OTP only after Supabase has accepted the new password.
+    if (!(await consumeOtp(normalizedEmail, code.trim()))) {
+      return NextResponse.json(
+        { error: "Code invalide ou expiré. Veuillez demander un nouveau code." },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({ success: true, message: "Mot de passe mis à jour avec succès." });

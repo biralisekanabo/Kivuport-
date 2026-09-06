@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-browser";
 import { toast } from "sonner";
+import { applyTheme, getStoredTheme, resolveTheme } from "@/lib/theme";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -80,7 +81,7 @@ export default function SettingsPage() {
       
       // Charger les préférences
       setNotifications(localStorage.getItem("kivuport-notifications") !== "false");
-      setDarkMode(localStorage.getItem("kivuport-theme") === "dark");
+      setDarkMode(resolveTheme(getStoredTheme()) === "dark");
       
       // Vérifier la 2FA
       const factors = await supabase.auth.mfa.listFactors();
@@ -270,7 +271,7 @@ export default function SettingsPage() {
     setNotifications(nextNotifications);
     setDarkMode(nextDarkMode);
     localStorage.setItem("kivuport-notifications", String(nextNotifications));
-    localStorage.setItem("kivuport-theme", nextDarkMode ? "dark" : "light");
+    applyTheme(nextDarkMode ? "dark" : "light");
     setMessage("Préférences enregistrées.");
   }
 

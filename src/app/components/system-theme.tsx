@@ -1,19 +1,19 @@
 "use client";
 
 import { useEffect } from "react";
+import { applyTheme, getStoredTheme } from "@/lib/theme";
 
 export function SystemTheme() {
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
 
-    const applyTheme = () => {
-      document.documentElement.classList.toggle("dark", media.matches);
-      document.documentElement.style.colorScheme = media.matches ? "dark" : "light";
-    };
+    const updateTheme = () => applyTheme(getStoredTheme());
 
-    applyTheme();
-    media.addEventListener("change", applyTheme);
-    return () => media.removeEventListener("change", applyTheme);
+    updateTheme();
+    media.addEventListener("change", updateTheme);
+    return () => {
+      media.removeEventListener("change", updateTheme);
+    };
   }, []);
 
   return null;
