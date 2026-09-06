@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  if (!url || !serviceRoleKey) return NextResponse.json({ error: "Supabase service role is not configured." }, { status: 503 });
+  if (!url || !serviceRoleKey) return NextResponse.json({ error: "Le service de données n'est pas configuré." }, { status: 503 });
 
   const supabase = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: messages, error } = await supabase.from("kivuport_email_outbox").select("id, recipient_email, subject, html_content, text_content, attempts").eq("status", "pending").lt("attempts", 5).order("created_at", { ascending: true }).limit(25);

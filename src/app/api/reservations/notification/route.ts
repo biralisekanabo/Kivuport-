@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
+  if (!url || !key) return NextResponse.json({ error: "Le service de données n'est pas configuré." }, { status: 500 });
   const supabase = createClient(url, key, {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });

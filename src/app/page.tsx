@@ -40,11 +40,23 @@ import {
   Package,
   UserPlus,
   Shield,
+  TrendingUp,
+  AlertTriangle,
+  Info,
+  Bell,
+  Plane,
+  Train,
+  Bus,
+  Home as HomeIcon,
+  Phone,
+  Mail,
+  Globe,
 } from "lucide-react";
 import { Footer } from "@/app/components/footer";
 import { LoginModal } from "@/app/components/login-modal";
 import { Navbar } from "@/app/components/navbar";
 import { SignupModal } from "@/app/components/signup-modal";
+import { supabase } from "@/lib/supabase-browser";
 
 // ===== IMPORT DYNAMIQUE DE LEAFLET =====
 const MapContainer = dynamic(
@@ -80,87 +92,79 @@ type WeatherData = {
   humidity: number;
   windSpeed: number;
   description: string;
+  lastUpdated: string;
 };
 
 type PortInfo = {
+  id: string;
   name: string;
   location: string;
   status: "open" | "closed" | "partial";
   vessels: number;
   nextDeparture: string;
   capacity: string;
+  latitude: number;
+  longitude: number;
 };
 
-const heroSlides = [
-  {
-    image: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=90",
-    label: "Le lac au départ",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&q=90",
-    label: "Les rives de Kivu",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=1800&q=90",
-    label: "Goma en mouvement",
-  },
+type CrossingRoute = {
+  id: string;
+  from_port: string;
+  to_port: string;
+  duration: string;
+  price: number;
+  vessel: string;
+  departure_time: string;
+  arrival_time: string;
+  status: "scheduled" | "departed" | "cancelled" | "delayed";
+  available_seats: number;
+};
+
+type Service = {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  active: boolean;
+};
+
+type Testimonial = {
+  id: string;
+  name: string;
+  avatar: string;
+  rating: number;
+  comment: string;
+  date: string;
+  route: string;
+};
+
+type NewsUpdate = {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  type: "info" | "alert" | "update";
+};
+
+type Vessel = {
+  id: string;
+  name: string;
+  type: string;
+  capacity: number;
+  status: "active" | "maintenance" | "inactive";
+  image: string;
+};
+
+// ===== DONNÉES STATIQUES DE FALLBACK =====
+const defaultPorts: PortInfo[] = [
+  { id: "1", name: "Goma", location: "Goma, RDC", status: "open", vessels: 12, nextDeparture: "08:00", capacity: "85%", latitude: -1.679, longitude: 29.225 },
+  { id: "2", name: "Bukavu", location: "Bukavu, RDC", status: "open", vessels: 8, nextDeparture: "10:30", capacity: "72%", latitude: -2.502, longitude: 28.859 },
+  { id: "3", name: "Kalehe", location: "Kalehe, RDC", status: "partial", vessels: 3, nextDeparture: "13:00", capacity: "45%", latitude: -1.509, longitude: 29.104 },
+  { id: "4", name: "Minova", location: "Minova, RDC", status: "open", vessels: 5, nextDeparture: "09:30", capacity: "63%", latitude: -1.697, longitude: 29.026 },
+  { id: "5", name: "Idjwi", location: "Idjwi, RDC", status: "partial", vessels: 2, nextDeparture: "14:15", capacity: "38%", latitude: -2.150, longitude: 29.040 },
 ];
 
-const services = [
-  {
-    icon: Ship,
-    title: "Voyages & horaires",
-    description: "Consultez les départs planifiés et choisissez le trajet qui vous convient.",
-  },
-  {
-    icon: Ticket,
-    title: "Réservations faciles",
-    description: "Réservez une place ou une cargaison en quelques étapes claires.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Suivi en confiance",
-    description: "Retrouvez vos demandes, confirmations et paiements au même endroit.",
-  },
-];
-
-const benefits = [
-  {
-    icon: Shield,
-    title: "Sécurité garantie",
-    description: "Tous nos bateaux sont certifiés et régulièrement inspectés.",
-    color: "blue",
-  },
-  {
-    icon: Clock,
-    title: "Ponctualité assurée",
-    description: "98% de nos traversées partent à l'heure.",
-    color: "emerald",
-  },
-  {
-    icon: Users,
-    title: "Support 24/7",
-    description: "Une équipe dédiée à votre écoute à tout moment.",
-    color: "purple",
-  },
-  {
-    icon: Award,
-    title: "Excellence reconnue",
-    description: "Élu meilleur service portuaire de la région.",
-    color: "amber",
-  },
-];
-
-// ===== DONNÉES POUR LA CARTE =====
-const ports = [
-  { name: "Goma", lat: -1.679, lng: 29.225, status: "open", icon: "⚓" },
-  { name: "Bukavu", lat: -2.502, lng: 28.859, status: "open", icon: "⚓" },
-  { name: "Kalehe", lat: -1.509, lng: 29.104, status: "partial", icon: "⚓" },
-  { name: "Minova", lat: -1.697, lng: 29.026, status: "open", icon: "⚓" },
-  { name: "Idjwi", lat: -2.150, lng: 29.040, status: "partial", icon: "⚓" },
-];
-
-const routes = [
+const defaultRoutes = [
   { from: "Goma", to: "Bukavu", color: "#3B82F6" },
   { from: "Goma", to: "Kalehe", color: "#8B5CF6" },
   { from: "Goma", to: "Minova", color: "#10B981" },
@@ -170,9 +174,11 @@ const routes = [
 // ===== COMPOSANTS =====
 
 // Composant Carte Interactive
-function InteractiveMap({ userLocation, onMapReady }: { 
+function InteractiveMap({ userLocation, onMapReady, ports, routes }: {
   userLocation: { lat: number; lng: number } | null;
   onMapReady?: () => void;
+  ports: PortInfo[];
+  routes: { from: string; to: string; color: string }[];
 }) {
   const [isClient, setIsClient] = useState(false);
   const [leaflet, setLeaflet] = useState<typeof import("leaflet") | null>(null);
@@ -213,6 +219,9 @@ function InteractiveMap({ userLocation, onMapReady }: {
     );
   }
 
+  const activePorts = ports.length > 0 ? ports : defaultPorts;
+  const activeRoutes = routes.length > 0 ? routes : defaultRoutes;
+
   return (
     <div className={`relative w-full ${isFullscreen ? 'fixed inset-0 z-50' : 'h-full min-h-[300px] sm:min-h-[400px] lg:min-h-[500px]'}`}>
       <MapContainer
@@ -233,16 +242,16 @@ function InteractiveMap({ userLocation, onMapReady }: {
           pathOptions={{ color: "#3B82F6", fillColor: "#93C5FD", fillOpacity: 0.15, weight: 1 }}
         />
 
-        {routes.map((route) => {
-          const fromPort = ports.find(p => p.name === route.from);
-          const toPort = ports.find(p => p.name === route.to);
+        {activeRoutes.map((route) => {
+          const fromPort = activePorts.find(p => p.name === route.from);
+          const toPort = activePorts.find(p => p.name === route.to);
           if (!fromPort || !toPort) return null;
           return (
             <Polyline
               key={`${route.from}-${route.to}`}
               positions={[
-                [fromPort.lat, fromPort.lng],
-                [toPort.lat, toPort.lng],
+                [fromPort.latitude, fromPort.longitude],
+                [toPort.latitude, toPort.longitude],
               ]}
               pathOptions={{
                 color: route.color,
@@ -254,10 +263,10 @@ function InteractiveMap({ userLocation, onMapReady }: {
           );
         })}
 
-        {ports.map((port) => (
+        {activePorts.map((port) => (
           <Marker
-            key={port.name}
-            position={[port.lat, port.lng]}
+            key={port.id}
+            position={[port.latitude, port.longitude]}
           >
             <Popup>
               <div className="p-1 sm:p-2">
@@ -266,7 +275,8 @@ function InteractiveMap({ userLocation, onMapReady }: {
                   <span className={`w-2 h-2 rounded-full ${port.status === 'open' ? 'bg-emerald-500' : port.status === 'partial' ? 'bg-amber-500' : 'bg-red-500'}`} />
                   {port.status === 'open' ? 'Ouvert' : port.status === 'partial' ? 'Partiel' : 'Fermé'}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">Coordonnées: {port.lat.toFixed(4)}, {port.lng.toFixed(4)}</p>
+                <p className="text-xs text-gray-400 mt-1">Navires: {port.vessels}</p>
+                <p className="text-xs text-gray-400">Prochain départ: {port.nextDeparture}</p>
               </div>
             </Popup>
           </Marker>
@@ -302,21 +312,21 @@ function InteractiveMap({ userLocation, onMapReady }: {
       </MapContainer>
 
       <div className="absolute bottom-4 right-4 flex flex-col gap-1.5 z-[1000]">
-        <button 
+        <button
           className="p-1.5 sm:p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
           onClick={() => setMapZoom(z => Math.min(z + 1, 18))}
           aria-label="Zoom in"
         >
           <ZoomIn size={16} className="text-gray-600" />
         </button>
-        <button 
+        <button
           className="p-1.5 sm:p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
           onClick={() => setMapZoom(z => Math.max(z - 1, 8))}
           aria-label="Zoom out"
         >
           <ZoomOut size={16} className="text-gray-600" />
         </button>
-        <button 
+        <button
           className="p-1.5 sm:p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
           onClick={() => setIsFullscreen(!isFullscreen)}
           aria-label="Fullscreen"
@@ -328,14 +338,14 @@ function InteractiveMap({ userLocation, onMapReady }: {
       <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl p-2 sm:p-3 shadow-lg border border-gray-100 text-[10px] sm:text-xs z-[1000] max-w-[200px] sm:max-w-none">
         <h4 className="font-semibold text-gray-700 mb-1 sm:mb-1.5">Lac Kivu - Ports</h4>
         <div className="space-y-0.5 sm:space-y-1">
-          {ports.slice(0, 3).map((port) => (
-            <div key={port.name} className="flex items-center gap-1.5 sm:gap-2">
+          {activePorts.slice(0, 3).map((port) => (
+            <div key={port.id} className="flex items-center gap-1.5 sm:gap-2">
               <div className={`w-2 h-2 rounded-full ${port.status === 'open' ? 'bg-emerald-500' : port.status === 'partial' ? 'bg-amber-500' : 'bg-red-500'}`} />
               <span className="text-gray-600 text-[9px] sm:text-xs">{port.name}</span>
             </div>
           ))}
-          {ports.length > 3 && (
-            <div className="text-gray-400 text-[8px] sm:text-[10px]">+{ports.length - 3} autres</div>
+          {activePorts.length > 3 && (
+            <div className="text-gray-400 text-[8px] sm:text-[10px]">+{activePorts.length - 3} autres</div>
           )}
         </div>
       </div>
@@ -343,7 +353,7 @@ function InteractiveMap({ userLocation, onMapReady }: {
   );
 }
 
-// Composant Météo
+// Composant Météo amélioré
 function WeatherWidget({ weather }: { weather: WeatherData | null }) {
   const [isLoading, setIsLoading] = useState(true);
 
@@ -390,7 +400,10 @@ function WeatherWidget({ weather }: { weather: WeatherData | null }) {
           <MapPin size={12} className="text-gray-500" />
           <span className="text-xs sm:text-sm font-medium text-gray-700">Goma</span>
         </div>
-        <RefreshCw size={12} className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors" />
+        <div className="flex items-center gap-2">
+          <span className="text-[8px] text-gray-400">{weather.lastUpdated}</span>
+          <RefreshCw size={12} className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors" />
+        </div>
       </div>
 
       <div className="flex items-center gap-3 sm:gap-4">
@@ -419,7 +432,7 @@ function WeatherWidget({ weather }: { weather: WeatherData | null }) {
   );
 }
 
-// Composant Statut du Port
+// Composant Statut du Port amélioré
 function PortStatus({ portInfo }: { portInfo: PortInfo }) {
   const statusColors = {
     open: "bg-emerald-500 text-white",
@@ -468,10 +481,221 @@ function PortStatus({ portInfo }: { portInfo: PortInfo }) {
   );
 }
 
-// ===== SECTION TRAJET GOMA → BUKAVU =====
-function RouteSection({ onAuth }: { onAuth: (mode: "login" | "signup") => void }) {
+// Nouveau composant: Liste des traversées disponibles
+function CrossingList({ crossings, onSelect }: { crossings: CrossingRoute[]; onSelect: (crossing: CrossingRoute) => void }) {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'scheduled': return 'text-emerald-600 bg-emerald-50';
+      case 'departed': return 'text-blue-600 bg-blue-50';
+      case 'cancelled': return 'text-red-600 bg-red-50';
+      case 'delayed': return 'text-amber-600 bg-amber-50';
+      default: return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'scheduled': return 'Prévu';
+      case 'departed': return 'Parti';
+      case 'cancelled': return 'Annulé';
+      case 'delayed': return 'Retardé';
+      default: return status;
+    }
+  };
+
   return (
-    <section className="py-20 bg-gradient-to-b from-white to-blue-50/50">
+    <div className="space-y-3">
+      {crossings.map((crossing) => (
+        <motion.div
+          key={crossing.id}
+          className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+          whileHover={{ x: 4 }}
+          onClick={() => onSelect(crossing)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-center">
+                <span className="text-sm font-semibold text-gray-900">{crossing.from_port}</span>
+                <ArrowRight size={14} className="text-gray-400" />
+                <span className="text-sm font-semibold text-gray-900">{crossing.to_port}</span>
+              </div>
+              <div className="w-px h-8 bg-gray-200" />
+              <div>
+                <p className="text-xs text-gray-500">{crossing.vessel}</p>
+                <p className="text-xs text-gray-400">{crossing.duration}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-gray-900">{crossing.price.toLocaleString()} FC</p>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-medium ${getStatusColor(crossing.status)}`}>
+                  {getStatusLabel(crossing.status)}
+                </span>
+                <span className="text-[8px] text-gray-400">• {crossing.available_seats} places</span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-400">
+            <Clock size={10} />
+            <span>Départ: {crossing.departure_time}</span>
+            <span className="w-1 h-1 bg-gray-300 rounded-full" />
+            <span>Arrivée: {crossing.arrival_time}</span>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// Nouveau composant: Navigation rapide
+function QuickActions({ onAuth }: { onAuth: (mode: "login" | "signup") => void }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {[
+        { icon: Ticket, label: "Réserver", color: "blue", action: () => onAuth("signup") },
+        { icon: CalendarDays, label: "Horaires", color: "emerald", action: () => {} },
+        { icon: Ship, label: "Flotte", color: "purple", action: () => {} },
+        { icon: MapPin, label: "Ports", color: "amber", action: () => {} },
+      ].map((item) => (
+        <motion.button
+          key={item.label}
+          className={`p-4 bg-${item.color}-50 rounded-xl hover:bg-${item.color}-100 transition-colors text-${item.color}-700`}
+          whileHover={{ y: -2, scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={item.action}
+        >
+          <item.icon size={20} className={`text-${item.color}-600 mx-auto mb-1`} />
+          <p className="text-xs font-medium">{item.label}</p>
+        </motion.button>
+      ))}
+    </div>
+  );
+}
+
+// Nouveau composant: Témoignages
+function TestimonialsSection({ testimonials }: { testimonials: Testimonial[] }) {
+  if (testimonials.length === 0) return null;
+
+  return (
+    <section className="py-16 bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Ce que disent nos passagers</h2>
+          <p className="text-gray-600 mt-2">Des avis authentiques de voyageurs comme vous</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {testimonials.slice(0, 3).map((testimonial) => (
+            <motion.div
+              key={testimonial.id}
+              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
+              whileHover={{ y: -4 }}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                  {testimonial.name.charAt(0)}
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">{testimonial.name}</p>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} size={12} className={i < testimonial.rating ? "text-amber-400 fill-amber-400" : "text-gray-300"} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">"{testimonial.comment}"</p>
+              <p className="text-xs text-gray-400 mt-2">Trajet: {testimonial.route} • {testimonial.date}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Nouveau composant: Actualités et alertes
+function NewsAlerts({ news }: { news: NewsUpdate[] }) {
+  if (news.length === 0) return null;
+
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'alert': return AlertTriangle;
+      case 'update': return Info;
+      default: return Info;
+    }
+  };
+
+  const getColor = (type: string) => {
+    switch (type) {
+      case 'alert': return 'text-amber-600 bg-amber-50 border-amber-200';
+      case 'update': return 'text-blue-600 bg-blue-50 border-blue-200';
+      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+        <Bell size={16} className="text-blue-600" />
+        Actualités et alertes
+      </h3>
+      <div className="space-y-2">
+        {news.slice(0, 3).map((item) => {
+          const Icon = getIcon(item.type);
+          return (
+            <div key={item.id} className={`p-3 rounded-lg border ${getColor(item.type)}`}>
+              <div className="flex items-start gap-2">
+                <Icon size={14} className="shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-medium">{item.title}</p>
+                  <p className="text-[10px] opacity-80 mt-0.5">{item.content}</p>
+                  <p className="text-[8px] opacity-60 mt-1">{item.date}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Nouveau composant: Statistiques en temps réel
+function RealtimeStats({ crossings, ports }: { crossings: CrossingRoute[]; ports: PortInfo[] }) {
+  const todayCrossings = crossings.length;
+  const activePorts = ports.filter(p => p.status === 'open').length;
+  const totalSeats = crossings.reduce((sum, c) => sum + c.available_seats, 0);
+  const avgPrice = crossings.reduce((sum, c) => sum + c.price, 0) / (crossings.length || 1);
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="bg-white rounded-xl p-4 border border-gray-200">
+        <p className="text-xs text-gray-400 uppercase tracking-wider">Traversées aujourd'hui</p>
+        <p className="text-2xl font-bold text-gray-900">{todayCrossings}</p>
+      </div>
+      <div className="bg-white rounded-xl p-4 border border-gray-200">
+        <p className="text-xs text-gray-400 uppercase tracking-wider">Ports actifs</p>
+        <p className="text-2xl font-bold text-gray-900">{activePorts}/{ports.length}</p>
+      </div>
+      <div className="bg-white rounded-xl p-4 border border-gray-200">
+        <p className="text-xs text-gray-400 uppercase tracking-wider">Places disponibles</p>
+        <p className="text-2xl font-bold text-gray-900">{totalSeats}</p>
+      </div>
+      <div className="bg-white rounded-xl p-4 border border-gray-200">
+        <p className="text-xs text-gray-400 uppercase tracking-wider">Prix moyen</p>
+        <p className="text-2xl font-bold text-gray-900">{Math.round(avgPrice).toLocaleString()} FC</p>
+      </div>
+    </div>
+  );
+}
+
+// ===== SECTION TRAJET GOMA → BUKAVU =====
+function RouteSection({ onAuth, routes }: { onAuth: (mode: "login" | "signup") => void; routes: CrossingRoute[] }) {
+  const gomaToBukavu = routes.filter(r => r.from_port === 'Goma' && r.to_port === 'Bukavu');
+  const mainRoute = gomaToBukavu[0];
+
+  return (
+    <section className="home-route-section py-20 bg-gradient-to-b from-white to-blue-50/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* En-tête de section */}
         <motion.div
@@ -489,7 +713,7 @@ function RouteSection({ onAuth }: { onAuth: (mode: "login" | "signup") => void }
             Goma → <span className="text-blue-600">Bukavu</span>
           </h2>
           <p className="text-gray-600 mt-3 max-w-2xl mx-auto">
-            La traversée emblématique du Lac Kivu. Un voyage de 2h30 entre deux des plus belles villes de l&apos;Est de la RDC.
+            La traversée emblématique du Lac Kivu. Un voyage entre deux des plus belles villes de l&apos;Est de la RDC.
           </p>
         </motion.div>
 
@@ -516,7 +740,7 @@ function RouteSection({ onAuth }: { onAuth: (mode: "login" | "signup") => void }
               </div>
               <div className="flex items-center gap-2 text-white/60 text-xs">
                 <Clock size={14} />
-                <span>2h30 de traversée</span>
+                <span>{mainRoute?.duration || '2h30'} de traversée</span>
               </div>
             </div>
           </div>
@@ -652,7 +876,7 @@ function RouteSection({ onAuth }: { onAuth: (mode: "login" | "signup") => void }
                   <div className="w-px h-4 bg-gray-200" />
                   <div className="flex items-center gap-1">
                     <Users size={12} className="text-gray-400" />
-                    <span className="text-xs text-gray-600">42 passagers</span>
+                    <span className="text-xs text-gray-600">{mainRoute?.available_seats || 42} passagers</span>
                   </div>
                 </div>
               </motion.div>
@@ -667,7 +891,7 @@ function RouteSection({ onAuth }: { onAuth: (mode: "login" | "signup") => void }
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider">Durée</p>
-                    <p className="text-sm font-semibold text-gray-900">2h30</p>
+                    <p className="text-sm font-semibold text-gray-900">{mainRoute?.duration || '2h30'}</p>
                   </div>
                 </div>
               </div>
@@ -679,7 +903,7 @@ function RouteSection({ onAuth }: { onAuth: (mode: "login" | "signup") => void }
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider">Navire</p>
-                    <p className="text-sm font-semibold text-gray-900">Kivu 1</p>
+                    <p className="text-sm font-semibold text-gray-900">{mainRoute?.vessel || 'Kivu 1'}</p>
                   </div>
                 </div>
               </div>
@@ -691,7 +915,7 @@ function RouteSection({ onAuth }: { onAuth: (mode: "login" | "signup") => void }
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider">Prix</p>
-                    <p className="text-sm font-semibold text-gray-900">25 000 FC</p>
+                    <p className="text-sm font-semibold text-gray-900">{mainRoute?.price.toLocaleString() || '25 000'} FC</p>
                   </div>
                 </div>
               </div>
@@ -703,7 +927,7 @@ function RouteSection({ onAuth }: { onAuth: (mode: "login" | "signup") => void }
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider">Prochain départ</p>
-                    <p className="text-sm font-semibold text-gray-900">08:00</p>
+                    <p className="text-sm font-semibold text-gray-900">{mainRoute?.departure_time || '08:00'}</p>
                   </div>
                 </div>
               </div>
@@ -732,98 +956,6 @@ function RouteSection({ onAuth }: { onAuth: (mode: "login" | "signup") => void }
             </div>
           </div>
         </motion.div>
-
-        {/* Points forts du trajet */}
-        <motion.div
-          className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
-          {[
-            {
-              icon: Shield,
-              title: "Sécurité maximale",
-              description: "Bateau certifié et équipage expérimenté",
-              color: "blue",
-            },
-            {
-              icon: Wind,
-              title: "Confort optimal",
-              description: "Pavillons spacieux et équipements modernes",
-              color: "emerald",
-            },
-            {
-              icon: Award,
-              title: "Service reconnu",
-              description: "Élu meilleure traversée du Lac Kivu",
-              color: "amber",
-            },
-          ].map((item, index) => (
-            <motion.div
-              key={item.title}
-              className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all"
-              whileHover={{ y: -4 }}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * index }}
-            >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${
-                item.color === 'blue' ? 'bg-blue-50 text-blue-600' :
-                item.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' :
-                'bg-amber-50 text-amber-600'
-              }`}>
-                <item.icon size={20} />
-              </div>
-              <h4 className="font-semibold text-gray-900 text-sm">{item.title}</h4>
-              <p className="text-xs text-gray-500 mt-1">{item.description}</p>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Autres destinations */}
-        <motion.div
-          className="mt-12 pt-8 border-t border-gray-200"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5 }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-semibold text-gray-700">Autres destinations</h4>
-            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-              Voir toutes <ArrowRight size={14} />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { name: "Kalehe", time: "1h45", price: "18 000 FC" },
-              { name: "Minova", time: "3h15", price: "32 000 FC" },
-              { name: "Idjwi", time: "4h00", price: "40 000 FC" },
-              { name: "Sake", time: "1h15", price: "12 000 FC" },
-            ].map((dest, index) => (
-              <motion.button
-                key={dest.name}
-                className="p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors text-left group"
-                whileHover={{ x: 4 }}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 * index }}
-              >
-                <p className="font-medium text-gray-900 text-sm group-hover:text-blue-600 transition-colors">
-                  {dest.name}
-                </p>
-                <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-                  <Clock size={10} />
-                  <span>{dest.time}</span>
-                  <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                  <span>{dest.price}</span>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        </motion.div>
       </div>
     </section>
   );
@@ -833,45 +965,150 @@ function RouteSection({ onAuth }: { onAuth: (mode: "login" | "signup") => void }
 export default function Home() {
   const [authMode, setAuthMode] = useState<"login" | "signup" | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
-  const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [isLoadingWeather, setIsLoadingWeather] = useState(true);
-  const [portInfo, setPortInfo] = useState<PortInfo>({
-    name: "Goma",
-    location: "Goma, RDC",
-    status: "open",
-    vessels: 12,
-    nextDeparture: "08:00",
-    capacity: "85%",
-  });
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  // ===== Récupération de la météo =====
-  useEffect(() => {
-    const fetchWeather = async () => {
-      setIsLoadingWeather(true);
-      try {
-        const weatherData: WeatherData = {
+  // États pour les données
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [ports, setPorts] = useState<PortInfo[]>([]);
+  const [routes, setRoutes] = useState<{ from: string; to: string; color: string }[]>([]);
+  const [crossings, setCrossings] = useState<CrossingRoute[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [news, setNews] = useState<NewsUpdate[]>([]);
+  const [vessels, setVessels] = useState<Vessel[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [selectedCrossing, setSelectedCrossing] = useState<CrossingRoute | null>(null);
+
+  // Géolocalisation
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
+  // ===== Récupération des données de la plateforme =====
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Récupération des ports
+      const { data: portsData, error: portsError } = await supabase
+        .from('ports')
+        .select('*')
+        .order('name');
+
+      if (!portsError && portsData) {
+        setPorts(portsData);
+        // Générer les routes à partir des ports
+        const generatedRoutes = portsData
+          .filter((p: any) => p.name !== 'Goma')
+          .map((p: any) => ({
+            from: 'Goma',
+            to: p.name,
+            color: ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444'][Math.floor(Math.random() * 5)]
+          }));
+        setRoutes(generatedRoutes);
+      } else {
+        setPorts(defaultPorts);
+        setRoutes(defaultRoutes);
+      }
+
+      // Récupération des traversées
+      const { data: crossingsData, error: crossingsError } = await supabase
+        .from('crossings')
+        .select('*')
+        .eq('status', 'scheduled')
+        .order('departure_time', { ascending: true });
+
+      if (!crossingsError && crossingsData) {
+        setCrossings(crossingsData);
+      }
+
+      // Récupération des témoignages
+      const { data: testimonialsData, error: testimonialsError } = await supabase
+        .from('testimonials')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(6);
+
+      if (!testimonialsError && testimonialsData) {
+        setTestimonials(testimonialsData);
+      }
+
+      // Récupération des actualités
+      const { data: newsData, error: newsError } = await supabase
+        .from('news')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(5);
+
+      if (!newsError && newsData) {
+        setNews(newsData);
+      }
+
+      // Récupération des navires
+      const { data: vesselsData, error: vesselsError } = await supabase
+        .from('vessels')
+        .select('*')
+        .eq('status', 'active');
+
+      if (!vesselsError && vesselsData) {
+        setVessels(vesselsData);
+      }
+
+      // Récupération des services
+      const { data: servicesData, error: servicesError } = await supabase
+        .from('services')
+        .select('*')
+        .eq('active', true);
+
+      if (!servicesError && servicesData) {
+        setServices(servicesData);
+      }
+
+      // Récupération de la météo
+      const { data: weatherData, error: weatherError } = await supabase
+        .from('weather')
+        .select('*')
+        .eq('location', 'Goma')
+        .order('last_updated', { ascending: false })
+        .limit(1);
+
+      if (!weatherError && weatherData && weatherData.length > 0) {
+        setWeather({
+          temperature: weatherData[0].temperature,
+          condition: weatherData[0].condition,
+          icon: weatherData[0].icon,
+          humidity: weatherData[0].humidity,
+          windSpeed: weatherData[0].wind_speed,
+          description: weatherData[0].description,
+          lastUpdated: new Date(weatherData[0].last_updated).toLocaleTimeString(),
+        });
+      } else {
+        // Données de fallback
+        setWeather({
           temperature: 26 + Math.floor(Math.random() * 4),
           condition: ["sunny", "cloudy", "rainy"][Math.floor(Math.random() * 3)] as WeatherData["condition"],
           icon: "sunny",
           humidity: 45 + Math.floor(Math.random() * 30),
           windSpeed: 5 + Math.floor(Math.random() * 15),
           description: "Ciel dégagé, légère brise",
-        };
-        setWeather(weatherData);
-        setIsLoadingWeather(false);
-      } catch (error) {
-        console.error("Erreur météo:", error);
-        setIsLoadingWeather(false);
+          lastUpdated: new Date().toLocaleTimeString(),
+        });
       }
-    };
 
-    fetchWeather();
-    const interval = setInterval(fetchWeather, 300000);
+    } catch (error) {
+      console.error("Erreur de chargement des données:", error);
+      // Données de fallback en cas d'erreur
+      setPorts(defaultPorts);
+      setRoutes(defaultRoutes);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [supabase]);
+
+  // ===== Récupération des données au chargement =====
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 300000); // Rafraîchissement toutes les 5 minutes
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchData]);
 
   // ===== Géolocalisation =====
   useEffect(() => {
@@ -900,13 +1137,46 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, []);
 
+  // Données du hero
+  const heroSlides = [
+    {
+      image: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=90",
+      label: "Le lac au départ",
+    },
+    {
+      image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&q=90",
+      label: "Les rives de Kivu",
+    },
+    {
+      image: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=1800&q=90",
+      label: "Goma en mouvement",
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500">Chargement du portail...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const mainPort = ports.find(p => p.name === 'Goma') || defaultPorts[0];
+
   return (
-    <div className="min-h-screen bg-white">
-      <Navbar onLogin={() => setAuthMode("login")} onSignup={() => setAuthMode("signup")} />
+    <div className="home-page min-h-screen bg-white">
+      <Navbar
+        authOpen={authMode !== null}
+        onLogin={() => setAuthMode("login")}
+        onSignup={() => setAuthMode("signup")}
+      />
 
       <main>
         {/* ===== HERO SECTION ===== */}
-        <section className="relative min-h-[100svh] overflow-hidden">
+        <section className="home-hero relative min-h-[100svh] overflow-hidden bg-[#102a43]">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeSlide}
@@ -934,7 +1204,7 @@ export default function Home() {
                   >
                     <p className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-[10px] sm:text-xs font-medium text-white/80 border border-white/10 mb-4 sm:mb-6">
                       <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                      Port de Goma • En direct
+                      Port de Goma • {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </p>
                   </motion.div>
 
@@ -955,6 +1225,11 @@ export default function Home() {
                     transition={{ duration: 0.6, delay: 0.4 }}
                   >
                     Réservez une traversée depuis le port de Goma et suivez votre réservation en toute simplicité.
+                    {crossings.length > 0 && (
+                      <span className="block mt-1 text-white/50 text-sm">
+                        {crossings.length} traversées disponibles aujourd'hui
+                      </span>
+                    )}
                   </motion.p>
 
                   <motion.div
@@ -1005,12 +1280,23 @@ export default function Home() {
                       </>
                     )}
                   </motion.div>
+
+                  {/* Actions rapides */}
+                  <motion.div
+                    className="mt-6"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.7 }}
+                  >
+                    <QuickActions onAuth={setAuthMode} />
+                  </motion.div>
                 </div>
 
                 {/* Widgets météo et port */}
                 <div className="lg:col-span-2 space-y-3 sm:space-y-4 mt-4 lg:mt-0">
                   <WeatherWidget weather={weather} />
-                  <PortStatus portInfo={portInfo} />
+                  <PortStatus portInfo={mainPort} />
+                  {news.length > 0 && <NewsAlerts news={news} />}
                 </div>
               </div>
             </div>
@@ -1035,8 +1321,36 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ===== STATISTIQUES EN TEMPS RÉEL ===== */}
+        <section className="py-8 bg-gradient-to-r from-blue-600 to-indigo-700">
+          <div className="max-w-7xl mx-auto px-4">
+            <RealtimeStats crossings={crossings} ports={ports} />
+          </div>
+        </section>
+
         {/* ===== SECTION TRAJET GOMA → BUKAVU ===== */}
-        <RouteSection onAuth={(mode) => setAuthMode(mode)} />
+        <RouteSection onAuth={setAuthMode} routes={crossings} />
+
+        {/* ===== LISTE DES TRAVERSÉES DISPONIBLES ===== */}
+        {crossings.length > 0 && (
+          <section className="py-16 bg-gray-50">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Traversées disponibles</h2>
+                  <p className="text-gray-600 text-sm">Sélectionnez votre trajet et réservez en quelques clics</p>
+                </div>
+                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
+                  Voir toutes <ArrowRight size={14} />
+                </button>
+              </div>
+              <CrossingList crossings={crossings} onSelect={setSelectedCrossing} />
+            </div>
+          </section>
+        )}
+
+        {/* ===== TÉMOIGNAGES ===== */}
+        <TestimonialsSection testimonials={testimonials} />
 
         {/* ===== MAP SECTION ===== */}
         <section className="py-12 sm:py-16 md:py-20 px-4 sm:px-6 lg:px-8" id="carte">
@@ -1063,7 +1377,12 @@ export default function Home() {
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <InteractiveMap userLocation={userLocation} onMapReady={() => setIsMapReady(true)} />
+              <InteractiveMap
+                userLocation={userLocation}
+                onMapReady={() => setIsMapReady(true)}
+                ports={ports}
+                routes={routes}
+              />
             </motion.div>
           </div>
         </section>
@@ -1081,24 +1400,31 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-3 sm:space-y-4">
-                  {services.map((service, index) => (
-                    <motion.div
-                      key={service.title}
-                      className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-                      initial={{ opacity: 0, x: -20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                        <service.icon size={16} className="sm:w-[18px] sm:h-[18px] text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm sm:text-base font-semibold text-gray-900">{service.title}</h3>
-                        <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{service.description}</p>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {(services.length > 0 ? services : [
+                    { id: '1', title: 'Voyages & horaires', description: 'Consultez les départs planifiés et choisissez le trajet qui vous convient.', icon: 'Ship', active: true },
+                    { id: '2', title: 'Réservations faciles', description: 'Réservez une place ou une cargaison en quelques étapes claires.', icon: 'Ticket', active: true },
+                    { id: '3', title: 'Suivi en confiance', description: 'Retrouvez vos demandes, confirmations et paiements au même endroit.', icon: 'ShieldCheck', active: true },
+                  ]).map((service, index) => {
+                    const Icon = service.icon === 'Ship' ? Ship : service.icon === 'Ticket' ? Ticket : ShieldCheck;
+                    return (
+                      <motion.div
+                        key={service.id}
+                        className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                          <Icon size={16} className="sm:w-[18px] sm:h-[18px] text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm sm:text-base font-semibold text-gray-900">{service.title}</h3>
+                          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{service.description}</p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1187,24 +1513,6 @@ export default function Home() {
                       <div className="w-1 h-4 sm:w-1.5 sm:h-5 bg-gradient-to-b from-gray-500 to-gray-600 rounded-full" />
                       <span className="text-[6px] sm:text-[8px] text-gray-500 font-medium mt-0.5 sm:mt-1">Bukavu</span>
                     </div>
-
-                    <motion.div
-                      className="absolute"
-                      style={{ bottom: '30%', left: '15%', right: '15%' }}
-                    >
-                      <svg viewBox="0 0 200 30" className="w-full h-6 sm:h-8">
-                        <motion.path
-                          d="M0,15 Q50,-5 100,15 Q150,35 200,15"
-                          fill="none"
-                          stroke="rgba(59, 130, 246, 0.4)"
-                          strokeWidth="1.5"
-                          strokeDasharray="4,4"
-                          initial={{ pathLength: 0 }}
-                          animate={{ pathLength: 1 }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        />
-                      </svg>
-                    </motion.div>
                   </div>
                 </div>
               </motion.div>
@@ -1217,9 +1525,9 @@ export default function Home() {
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
               {[
-                { value: "15K+", label: "Traversées" },
+                { value: `${crossings.length}+`, label: "Traversées" },
                 { value: "98%", label: "Satisfaction" },
-                { value: "50+", label: "Destinations" },
+                { value: `${ports.length}+`, label: "Ports" },
                 { value: "24/7", label: "Support" },
               ].map((stat, index) => (
                 <motion.div
@@ -1257,7 +1565,32 @@ export default function Home() {
             </motion.div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              {benefits.map((benefit, index) => (
+              {[
+                {
+                  icon: Shield,
+                  title: "Sécurité garantie",
+                  description: "Tous nos bateaux sont certifiés et régulièrement inspectés.",
+                  color: "blue",
+                },
+                {
+                  icon: Clock,
+                  title: "Ponctualité assurée",
+                  description: "98% de nos traversées partent à l'heure.",
+                  color: "emerald",
+                },
+                {
+                  icon: Users,
+                  title: "Support 24/7",
+                  description: "Une équipe dédiée à votre écoute à tout moment.",
+                  color: "purple",
+                },
+                {
+                  icon: Award,
+                  title: "Excellence reconnue",
+                  description: "Élu meilleur service portuaire de la région.",
+                  color: "amber",
+                },
+              ].map((benefit, index) => (
                 <motion.div
                   key={benefit.title}
                   className="text-center p-6 bg-gray-50 rounded-2xl hover:shadow-xl transition-all border border-gray-100"
@@ -1279,58 +1612,6 @@ export default function Home() {
                   <p className="text-sm text-gray-500 mt-1">{benefit.description}</p>
                 </motion.div>
               ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ===== ROUTE SECTION ===== */}
-        <section className="py-12 sm:py-16 md:py-20 px-4 sm:px-6 lg:px-8" id="fonctionnement">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-              <div>
-                <p className="text-xs sm:text-sm font-semibold text-blue-600 uppercase tracking-wider">Navigation</p>
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">Visualisez votre itinéraire.</h2>
-                <p className="text-sm sm:text-base text-gray-600 mt-3 leading-relaxed">
-                  Une vue immersive pour comprendre le départ, le trajet et l&apos;arrivée avant de confirmer votre réservation.
-                </p>
-                <div className="mt-4 sm:mt-6 flex flex-wrap items-center gap-3 sm:gap-4">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-blue-600 rounded-full" />
-                    <span className="text-xs sm:text-sm text-gray-700 font-medium">Port de Goma</span>
-                  </div>
-                  <div className="w-10 sm:w-16 h-px bg-gray-300 relative">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full animate-pulse" />
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-emerald-500 rounded-full" />
-                    <span className="text-xs sm:text-sm text-gray-700 font-medium">Destination</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setAuthMode("signup")}
-                  className="mt-6 sm:mt-8 px-5 sm:px-6 py-2.5 sm:py-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg transition-all flex items-center gap-2 text-sm sm:text-base"
-                >
-                  Voir les départs
-                  <ArrowRight size={16} className="sm:w-[18px] sm:h-[18px]" />
-                </button>
-              </div>
-
-              <div className="relative aspect-square bg-gradient-to-br from-blue-50 to-slate-100 rounded-2xl overflow-hidden flex items-center justify-center min-h-[250px] sm:min-h-[350px] lg:min-h-[400px]">
-                <div className="relative">
-                  <div className="w-32 h-32 sm:w-40 sm:h-40 border-2 border-blue-200 rounded-full animate-spin-slow" />
-                  <div className="absolute inset-3 sm:inset-4 border-2 border-blue-100 rounded-full animate-spin-slower" />
-                  <div className="absolute inset-6 sm:inset-8 border border-blue-50 rounded-full" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-600 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center">
-                      <Ship size={20} className="sm:w-6 sm:h-6 text-white" />
-                    </div>
-                  </div>
-                </div>
-                <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 text-center">
-                  <p className="text-[10px] sm:text-xs text-gray-500">Port de Goma • Départs disponibles</p>
-                </div>
-              </div>
             </div>
           </div>
         </section>

@@ -389,7 +389,7 @@ export default function DashboardPage() {
       if (notificationError) throw notificationError;
       setNotifications((notificationRows || []).map((notification: any) => ({ id: String(notification.id), title: notification.title, message: notification.message, type: ["success", "warning", "error"].includes(notification.kind) ? notification.kind : "info", read: Boolean(notification.read_at), created_at: notification.created_at })) as Notification[]);
     } catch (error) {
-      console.error("Erreur lors du chargement des données Supabase:", error);
+      console.error("Erreur lors du chargement des données:", error);
     } finally {
       setLoadingStats(false);
       setLoadingBookings(false);

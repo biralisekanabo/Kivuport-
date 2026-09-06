@@ -1019,24 +1019,77 @@ body {
 
 :root.dark .bg-white,
 :root.dark .bg-slate-50,
+:root.dark .bg-slate-100,
 :root.dark .bg-gray-50,
 :root.dark .bg-gray-100 {
   background-color: var(--surface-raised) !important;
 }
 
+:root.dark .bg-blue-50,
+:root.dark .bg-indigo-50,
+:root.dark .bg-purple-50,
+:root.dark .bg-emerald-50,
+:root.dark .bg-green-50,
+:root.dark .bg-teal-50,
+:root.dark .bg-cyan-50,
+:root.dark .bg-amber-50,
+:root.dark .bg-yellow-50,
+:root.dark .bg-orange-50,
+:root.dark .bg-red-50,
+:root.dark .bg-pink-50 {
+  background-color: #172c3d !important;
+}
+
+:root.dark .bg-blue-100,
+:root.dark .bg-indigo-100,
+:root.dark .bg-purple-100,
+:root.dark .bg-emerald-100,
+:root.dark .bg-green-100,
+:root.dark .bg-amber-100,
+:root.dark .bg-yellow-100,
+:root.dark .bg-red-100 {
+  background-color: #1f3a4d !important;
+}
+
+:root.dark .from-white {
+  --tw-gradient-from: var(--surface) !important;
+  --tw-gradient-to: rgb(15 23 32 / 0) !important;
+}
+
+:root.dark .to-white {
+  --tw-gradient-to: var(--surface) !important;
+}
+
+:root.dark .to-blue-50\/50,
+:root.dark .via-slate-100,
+:root.dark .from-blue-50 {
+  --tw-gradient-to: #12283a !important;
+  --tw-gradient-stops: var(--tw-gradient-from), #172d42, var(--tw-gradient-to) !important;
+}
+
 :root.dark .bg-white\/80,
-:root.dark .bg-white\/95 {
+:root.dark .bg-white\/95,
+:root.dark .bg-white\/70,
+:root.dark .bg-white\/40 {
   background-color: rgb(15 23 32 / .92) !important;
+}
+
+:root.dark .bg-gray-50\/80,
+:root.dark .bg-slate-50\/80 {
+  background-color: rgb(20 31 43 / .94) !important;
 }
 
 :root.dark .text-gray-900,
 :root.dark .text-gray-800,
+:root.dark .text-gray-950,
 :root.dark .text-slate-900 {
   color: var(--text-strong) !important;
 }
 
 :root.dark .text-gray-700,
 :root.dark .text-gray-600,
+:root.dark .text-slate-600,
+:root.dark .text-slate-300,
 :root.dark .text-slate-700 {
   color: var(--text-body) !important;
 }
@@ -1048,11 +1101,24 @@ body {
   color: var(--text-muted) !important;
 }
 
+:root.dark .text-gray-950,
+:root.dark .text-slate-950,
+:root.dark .text-black {
+  color: var(--text-strong) !important;
+}
+
 :root.dark .border-gray-100,
 :root.dark .border-gray-200,
+:root.dark .border-gray-300,
 :root.dark .border-slate-200,
 :root.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
   border-color: var(--line) !important;
+}
+
+:root.dark .hover\:bg-gray-50:hover,
+:root.dark .hover\:bg-gray-100:hover,
+:root.dark .hover\:bg-gray-200:hover {
+  background-color: #203447 !important;
 }
 
 :root.dark input,
@@ -1105,6 +1171,153 @@ a:focus-visible {
 :root.dark .shadow-xl,
 :root.dark .shadow-2xl {
   --tw-shadow-color: rgb(0 0 0 / .35);
+}
+
+/* Components using the legacy page stylesheet need the same dark surfaces. */
+:root.dark .travel-filters label,
+:root.dark .travel-filters select,
+:root.dark .travel-pagination button,
+:root.dark .settings-form input,
+:root.dark .booking-form input,
+:root.dark .booking-form select,
+:root.dark .period-select,
+:root.dark .admin-secondary,
+:root.dark .admin-search,
+:root.dark .admin-filter {
+  border-color: var(--line);
+  background-color: var(--surface-raised);
+  color: var(--text-body);
+}
+
+:root.dark .route-row,
+:root.dark .booking-item {
+  border-color: var(--line);
+}
+
+:root.dark .home-page {
+  background: var(--surface) !important;
+}
+
+:root.dark .home-page .home-route-section {
+  background: linear-gradient(180deg, #0f1c29 0%, #12283a 100%) !important;
+}
+
+:root.dark .home-page .home-route-section .bg-white {
+  background: var(--surface-raised) !important;
+}
+
+:root.dark .home-page .home-route-section .bg-gradient-to-br {
+  background-image: linear-gradient(135deg, #172d42, #1a2638 55%, #202d49) !important;
+}
+
+:root.dark .home-page section.bg-white,
+:root.dark .home-page section.bg-gray-50 {
+  background-color: var(--surface) !important;
+}
+
+:root.dark .home-page .home-hero {
+  background-color: #102a43 !important;
+}
+
+.nav-pill-action {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: #526174;
+  transition: background-color .2s ease, color .2s ease, transform .2s ease;
+}
+
+.nav-pill-action:hover,
+.nav-pill-action:focus-visible {
+  color: #1d4ed8;
+  background: #eff6ff;
+  transform: translateY(-1px);
+}
+
+.nav-pill-add {
+  display: inline-flex;
+  width: 50px;
+  height: 50px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  color: #fff;
+  background: #1d4ed8;
+  box-shadow: 0 8px 18px rgb(29 78 216 / .28);
+  transition: background-color .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+
+.nav-pill-add:hover,
+.nav-pill-add:focus-visible {
+  background: #1e40af;
+  box-shadow: 0 10px 22px rgb(29 78 216 / .36);
+  transform: translateY(-1px);
+}
+
+:root.dark .nav-pill-action {
+  color: #cbd5e1;
+}
+
+:root.dark .nav-pill-action:hover,
+:root.dark .nav-pill-action:focus-visible {
+  color: #bfdbfe;
+  background: #203447;
+}
+
+.nav-icon-action {
+  color: #1e3a8a;
+  background: rgb(239 246 255 / .88);
+  border: 1px solid rgb(147 197 253 / .45);
+  box-shadow: 0 4px 12px rgb(30 64 175 / .12);
+}
+
+.nav-icon-action:hover,
+.nav-icon-action:focus-visible {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-color: rgb(59 130 246 / .65);
+  box-shadow: 0 7px 18px rgb(37 99 235 / .24);
+  transform: translateY(-2px) scale(1.04);
+}
+
+:root.dark .nav-icon-action {
+  color: #dbeafe;
+  background: rgb(30 58 138 / .48);
+  border-color: rgb(96 165 250 / .45);
+  box-shadow: 0 4px 14px rgb(0 0 0 / .28);
+}
+
+:root.dark .nav-icon-action:hover,
+:root.dark .nav-icon-action:focus-visible {
+  color: #fff;
+  background: rgb(37 99 235 / .65);
+  border-color: rgb(147 197 253 / .75);
+}
+
+@media (max-width: 480px) {
+  .nav-pill {
+    height: 66px;
+    padding-inline: 12px;
+  }
+
+  .nav-pill-action {
+    width: 42px;
+    height: 42px;
+  }
+
+  .nav-icon-action {
+    width: 46px;
+    height: 46px;
+  }
+
+  .nav-pill-add {
+    width: 46px;
+    height: 46px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

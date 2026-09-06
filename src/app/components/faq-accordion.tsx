@@ -16,7 +16,7 @@ export function FaqAccordion({ items }: { items: Item[] }) {
         return (
           <motion.div
             key={index}
-            className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-colors ${isOpen ? "border-blue-200" : "border-gray-100"}`}
+            className={`bg-white dark:bg-slate-800 rounded-2xl border shadow-sm overflow-hidden transition-colors ${isOpen ? "border-blue-200 dark:border-blue-800" : "border-gray-100 dark:border-slate-700"}`}
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -27,9 +27,9 @@ export function FaqAccordion({ items }: { items: Item[] }) {
               onClick={() => setOpen(isOpen ? null : index)}
               className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
             >
-              <span className="font-medium text-gray-900">{item.question}</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">{item.question}</span>
               <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
-                <ChevronDown size={18} className="text-gray-400" />
+                <ChevronDown size={18} className="text-gray-400 dark:text-slate-400" />
               </motion.span>
             </button>
             <AnimatePresence initial={false}>
@@ -40,7 +40,7 @@ export function FaqAccordion({ items }: { items: Item[] }) {
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <div className="px-5 pb-4 text-sm text-gray-600 leading-relaxed">{item.answer}</div>
+                  <div className="px-5 pb-4 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">{item.answer}</div>
                 </motion.div>
               )}
             </AnimatePresence>

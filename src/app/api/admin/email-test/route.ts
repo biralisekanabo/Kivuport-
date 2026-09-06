@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnonKey) return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
+  if (!supabaseUrl || !supabaseAnonKey)   return NextResponse.json({ error: "Le service de données n'est pas configuré." }, { status: 500 });
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
   const { data, error } = await supabase.auth.getUser(token);

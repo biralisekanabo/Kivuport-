@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
+    return NextResponse.json({ error: "Le service de données n'est pas configuré." }, { status: 500 });
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey);

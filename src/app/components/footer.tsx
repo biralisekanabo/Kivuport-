@@ -218,7 +218,7 @@ export function Footer() {
             . Tous droits réservés.
           </p>
 
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-slate-400">
             <Link href="/privacy" className="hover:text-white transition-colors">
               Politique de confidentialité
             </Link>

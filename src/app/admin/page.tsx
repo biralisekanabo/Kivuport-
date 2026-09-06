@@ -1971,7 +1971,7 @@ export default function AdminPage() {
     }
 
     if (queryError) {
-      const msg = typeof queryError?.message === "string" ? queryError.message : "Erreur de requête Supabase";
+      const msg = typeof queryError?.message === "string" ? queryError.message : "Erreur lors du chargement des réservations";
       console.error("Erreur chargement réservations:", queryError);
       setNotice(`Impossible de charger les réservations : ${msg}`);
       toast.error("Erreur de chargement des réservations");
@@ -3609,7 +3609,7 @@ export default function AdminPage() {
               <AdminHeading
                 eyebrow={new Date().toLocaleDateString("fr-FR", { dateStyle: "long" })}
                 title="Bonjour, administrateur."
-                description="Voici les données actuelles de votre base Supabase."
+                description="Voici les données actuelles de votre plateforme."
                 action={
                   <button
                     className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-blue-500/25"
@@ -3726,7 +3726,7 @@ export default function AdminPage() {
           {section === "reservations" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-4">
               <AdminHeading
-                eyebrow="Opérations · Supabase"
+                eyebrow="Opérations"
                 title="Réservations"
                 description="Données chargées directement depuis la table reservations."
                 action={
@@ -3859,7 +3859,7 @@ export default function AdminPage() {
           {section === "payments" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-4">
               <AdminHeading
-                eyebrow="Finance · Supabase"
+                eyebrow="Finance"
                 title="Paiements"
                 description="Paiements chargés directement depuis la table paiements."
               />
@@ -3887,9 +3887,9 @@ export default function AdminPage() {
           {section === "fleet" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-4">
               <AdminHeading
-                eyebrow="Opérations · Supabase"
+                eyebrow="Opérations"
                 title="Flotte & voyages"
-                description="Bateaux et départs publiés depuis Supabase."
+                description="Bateaux et départs publiés sur la plateforme."
                 action={
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -3950,7 +3950,7 @@ export default function AdminPage() {
           {section === "pavilions" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-4">
               <AdminHeading
-                eyebrow="Tarifs · Supabase"
+                eyebrow="Tarifs"
                 title="Pavillons"
                 description="Capacités et tarifs rattachés aux bateaux."
                 action={
@@ -3987,9 +3987,9 @@ export default function AdminPage() {
           {section === "infrastructure" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-4">
               <AdminHeading
-                eyebrow="Référentiel · Supabase"
+                eyebrow="Référentiel"
                 title="Ports & quais"
-                description="Ports et quais chargés directement depuis Supabase."
+                description="Ports et quais chargés directement depuis la plateforme."
                 action={
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -4050,7 +4050,7 @@ export default function AdminPage() {
           {section === "people" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-4">
               <AdminHeading
-                eyebrow="Utilisateurs · Supabase"
+                eyebrow="Utilisateurs"
                 title="Clients"
                 description="Clients chargés directement depuis la table client."
                 action={

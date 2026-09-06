@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return NextResponse.json({ error: "Supabase n'est pas configuré." }, { status: 503 });
+  if (!url || !key) return NextResponse.json({ error: "Le service de données n'est pas configuré." }, { status: 503 });
   const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const { data: transaction } = await supabase.from("payment_transactions")

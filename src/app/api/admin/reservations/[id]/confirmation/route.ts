@@ -12,7 +12,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnonKey) return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
+  if (!supabaseUrl || !supabaseAnonKey) return NextResponse.json({ error: "Le service de données n'est pas configuré." }, { status: 500 });
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
@@ -38,7 +38,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   try {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!serviceRoleKey) return NextResponse.json({ error: "Supabase service role is not configured." }, { status: 503 });
+    if (!serviceRoleKey) return NextResponse.json({ error: "Le service de données n'est pas configuré." }, { status: 503 });
     const serviceClient = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: paymentLink, error: paymentLinkError } = await serviceClient.rpc("create_kivuport_public_payment_link", { p_reservation_id: reservationId });
     let publicPaymentLink = paymentLink?.[0];

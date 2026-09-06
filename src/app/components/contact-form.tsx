@@ -31,38 +31,38 @@ export function ContactForm() {
   };
 
   const inputClass = (key: string) =>
-    `w-full px-4 py-3 bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all text-sm ${
+    `w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-900 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 ${
       errors[key] ? "border-red-400" : "border-gray-200"
     }`;
 
   return (
     <motion.form
       onSubmit={handleSubmit}
-      className="p-6 sm:p-8 bg-white rounded-3xl border border-gray-100 shadow-sm space-y-4"
+      className="p-6 sm:p-8 bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm space-y-4"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.4 }}
     >
-      <h2 className="text-xl font-bold text-gray-900">Envoyez-nous un message</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Envoyez-nous un message</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom complet</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Nom complet</label>
           <input value={form.nom} onChange={(e) => set("nom", e.target.value)} placeholder="Votre nom" className={inputClass("nom")} />
           {errors.nom && <p className="mt-1 text-xs text-red-500">{errors.nom}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Email</label>
           <input value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="vous@exemple.com" className={inputClass("email")} />
           {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Sujet</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Sujet</label>
         <input value={form.sujet} onChange={(e) => set("sujet", e.target.value)} placeholder="Objet de votre demande" className={inputClass("sujet")} />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Message</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Message</label>
         <textarea value={form.message} onChange={(e) => set("message", e.target.value)} rows={5} placeholder="Votre message..." className={inputClass("message")} />
         {errors.message && <p className="mt-1 text-xs text-red-500">{errors.message}</p>}
       </div>

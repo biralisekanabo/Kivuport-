@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
+    return NextResponse.json({ error: "Le service de données n'est pas configuré." }, { status: 500 });
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
