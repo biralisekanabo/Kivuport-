@@ -2,67 +2,81 @@
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
+  console.log("🚀 WEBHOOK APPELE - KIVUPORT");
+  
+  // Lire le body brut
+  const rawBody = await request.text();
+  console.log("📦 BODY BRUT:", rawBody);
+  
+  // Lire les headers
+  const headers = Object.fromEntries(request.headers);
+  console.log("📋 HEADERS:", JSON.stringify(headers, null, 2));
+  
   try {
-    console.log("🚀 WEBHOOK APPELE");
+    // Parser le JSON
+    const body = JSON.parse(rawBody);
+    console.log("✅ JSON PARSÉ:", JSON.stringify(body, null, 2));
+    console.log("🔑 CLÉS DISPONIBLES:", Object.keys(body));
     
-    const rawBody = await request.text();
-    console.log("📦 BODY BRUT:", rawBody);
-    console.log("📋 HEADERS:", Object.fromEntries(request.headers));
-    
-    // Tenter de parser le JSON
-    let body;
-    try {
-      body = JSON.parse(rawBody);
-      console.log("✅ JSON PARSÉ:", JSON.stringify(body, null, 2));
-      console.log("🔑 CLÉS DISPONIBLES:", Object.keys(body));
-    } catch (e) {
-      console.error("❌ ERREUR JSON:", e);
-      return NextResponse.json({ 
-        success: false, 
-        error: "Invalid JSON",
-        received: rawBody 
-      }, { status: 400 });
-    }
-    
-    // Extraire les données (flexible)
+    // Extraire les données (tous les formats possibles)
     const externalReference = 
       body.externalReference || 
       body.transactionReference || 
       body.reference || 
       body.transactionId || 
-      body.id || 
-      "NOT_FOUND";
+      body.id ||
+      body.data?.transactionReference ||
+      body.data?.reference ||
+      body.payment?.reference ||
+      null;
     
     const providerStatus = 
       body.status || 
       body.transactionStatus || 
       body.transaction_status || 
-      body.state || 
-      "NOT_FOUND";
+      body.state ||
+      body.data?.status ||
+      body.data?.transactionStatus ||
+      body.payment?.status ||
+      null;
     
     const rawAmount = 
       body.amount || 
       body.order?.amount || 
       body.total || 
-      body.amount_paid || 
-      0;
+      body.amount_paid ||
+      body.data?.amount ||
+      body.data?.order?.amount ||
+      body.payment?.amount ||
+      null;
     
-    console.log("📊 DONNEES EXTRAITES:", { externalReference, providerStatus, rawAmount });
+    const amount = typeof rawAmount === "number" ? rawAmount : 
+                   typeof rawAmount === "string" ? Number(rawAmount) : 
+                   NaN;
     
-    // Toujours retourner un succès pour voir la requête
-    return NextResponse.json({ 
+    console.log("📊 DONNÉES EXTRAITES:", { 
+      externalReference, 
+      providerStatus, 
+      amount,
+      rawAmount 
+    });
+    
+    // TOUJOURS retourner une réponse pour voir la requête
+    return NextResponse.json({
       success: true,
-      received: {
-        body,
-        extracted: { externalReference, providerStatus, rawAmount }
+      debug: {
+        received: body,
+        extracted: { externalReference, providerStatus, amount },
+        headers: headers
       }
     });
     
   } catch (error) {
-    console.error("❌ ERREUR GLOBALE:", error);
+    console.error("❌ ERREUR:", error);
     return NextResponse.json({ 
       success: false, 
-      error: String(error) 
-    }, { status: 500 });
+      error: String(error),
+      rawBody: rawBody 
+    }, { status: 400 });
   }
 }
