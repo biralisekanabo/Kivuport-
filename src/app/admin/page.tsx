@@ -78,6 +78,7 @@ import {
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-browser";
 import { toast } from "sonner";
+import { pdfText } from "@/lib/pdf-text";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -2919,7 +2920,7 @@ export default function AdminPage() {
         page.drawRectangle({ x: 0, y: 770, width: pageWidth, height: 72, color: rgb(0.04, 0.18, 0.42) });
         page.drawText("KivuPort", { x: margin, y: 800, size: 22, font: fontBold, color: rgb(1, 1, 1) });
         page.drawText(reportLabel, { x: margin + 220, y: 804, size: 14, font: fontItalic, color: rgb(0.88, 0.92, 1) });
-        page.drawText(`Généré le ${new Date().toLocaleDateString("fr-FR")}`, {
+        page.drawText(pdfText(`Généré le ${new Date().toLocaleDateString("fr-FR")}`), {
           x: margin,
           y: 782,
           size: 9,
@@ -2952,7 +2953,7 @@ export default function AdminPage() {
         const x = margin + index * 130;
         currentPage.drawRectangle({ x, y: y - 8, width: 115, height: 54, color: card.color });
         currentPage.drawText(card.label, { x: x + 10, y: y + 20, size: 8, font: font, color: rgb(1, 1, 1) });
-        currentPage.drawText(card.value, { x: x + 10, y: y + 2, size: 15, font: fontBold, color: rgb(1, 1, 1) });
+        currentPage.drawText(pdfText(card.value), { x: x + 10, y: y + 2, size: 15, font: fontBold, color: rgb(1, 1, 1) });
       });
 
       y -= 84;
@@ -2996,7 +2997,7 @@ export default function AdminPage() {
         currentPage.drawRectangle({ x: margin - 4, y: y - 12, width: pageWidth - (margin * 2) + 8, height: 18, color: fillColor });
 
         rowValues.forEach((value, index) => {
-          const safeValue = String(value ?? "-").slice(0, index === 1 ? 18 : 22);
+          const safeValue = pdfText(String(value ?? "-").slice(0, index === 1 ? 18 : 22));
           currentPage.drawText(safeValue, {
             x: columnX[index],
             y,
@@ -3010,7 +3011,7 @@ export default function AdminPage() {
       }
 
       const bottomNote = canceled > 0 ? `Annulées : ${canceled}` : "Aucune réservation annulée";
-      currentPage.drawText(bottomNote, {
+      currentPage.drawText(pdfText(bottomNote), {
         x: margin,
         y: 38,
         size: 8,

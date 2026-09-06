@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createInvoicePdf } from "@/lib/invoice";
 
 export const runtime = "nodejs";
 
@@ -26,19 +27,26 @@ export async function GET(request: Request) {
 
   const { data: reservation } = await supabase
     .from("reservations")
-    .select("id, client:client(nom, prenom, email), voyage:voyages(code_voyage)")
+    .select("id, prix_total, client:client(nom, prenom, email), voyage:voyages(code_voyage)")
     .eq("id", payment.idreservation)
     .single();
   if (!reservation) return NextResponse.json({ error: "Réservation introuvable." }, { status: 404 });
 
-  return NextResponse.json({
-    reference: transaction.external_reference,
+  const client = reservation.client as { nom?: string; prenom?: string } | null;
+  const voyage = (reservation.voyage as { code_voyage?: string } | null)?.code_voyage || "KivuPort";
+  const pdf = await createInvoicePdf({
     reservationId: reservation.id,
-    amount: payment.montant,
-    currency: payment.devise,
-    method: payment.mode_paiement,
-    paidAt: payment.date_paiement,
-    client: reservation.client,
-    voyage: reservation.voyage,
+    amount: Number(reservation.prix_total || payment.montant || 0),
+    currency: payment.devise || "CDF",
+    voyage,
+    customer: [client?.prenom, client?.nom].filter(Boolean).join(" "),
+    paymentReference: transaction.external_reference,
+  });
+  return new NextResponse(Buffer.from(pdf), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="kivuport-recu-${reservation.id}.pdf"`,
+      "Cache-Control": "no-store",
+    },
   });
 }

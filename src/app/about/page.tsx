@@ -21,7 +21,6 @@ import {
   Navigation,
   Compass,
   Star,
-  Calendar,
   Anchor,
   BadgeCheck,
   Briefcase,

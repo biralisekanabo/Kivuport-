@@ -41,5 +41,6 @@ export async function GET(request: Request) {
     destination: (reservation.voyage as { code_voyage?: string } | null)?.code_voyage || "KivuPort",
     clientName: [client?.prenom, client?.nom].filter(Boolean).join(" ") || "Client",
     clientPhone: client?.telephone || "",
+    merchantPhone: process.env.MAISHA_MERCHANT_PHONE || "",
   });
 }
