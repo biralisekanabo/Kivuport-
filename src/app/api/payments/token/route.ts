@@ -25,12 +25,6 @@ function detectProvider(phone: string): string {
   return "AIRTEL";
 }
 
-function providerPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("243") && digits.length === 12) return `0${digits.slice(3)}`;
-  return digits;
-}
-
 function merchantPhone(provider: string): string {
   if (provider === "VODACOM") {
     return process.env.MAISHA_VODACOM_MERCHANT_PHONE || "0822473655";
@@ -227,7 +221,8 @@ export async function POST(request: Request) {
           paymentChannel: {
             channel: "MOBILEMONEY",
             provider,
-            walletID: providerPhone(clientPhone),
+            // MaishaPay expects the customer's wallet in international format.
+            walletID: clientPhone,
             merchantWalletID: merchantPhone(provider),
           },
         }),
