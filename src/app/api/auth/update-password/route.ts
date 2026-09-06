@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { consumeOtp } from "@/lib/otp-store";
+import { checkOtp, consumeOtp } from "@/lib/otp-store";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
@@ -25,6 +25,7 @@ export async function POST(request: Request) {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
+  const normalizedCode = code.trim();
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -37,6 +38,13 @@ export async function POST(request: Request) {
   });
 
   try {
+    if (!(await checkOtp(normalizedEmail, normalizedCode))) {
+      return NextResponse.json(
+        { error: "Code invalide ou expiré. Veuillez demander un nouveau code." },
+        { status: 400 }
+      );
+    }
+
     const { data: listData, error: listError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (listError) {
       return NextResponse.json({ error: listError.message }, { status: 502 });
@@ -56,13 +64,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: updateError.message }, { status: 400 });
     }
 
-    // Consume the OTP only after Supabase has accepted the new password.
-    if (!(await consumeOtp(normalizedEmail, code.trim()))) {
-      return NextResponse.json(
-        { error: "Code invalide ou expiré. Veuillez demander un nouveau code." },
-        { status: 400 }
-      );
-    }
+    await consumeOtp(normalizedEmail, normalizedCode);
 
     return NextResponse.json({ success: true, message: "Mot de passe mis à jour avec succès." });
   } catch (error) {

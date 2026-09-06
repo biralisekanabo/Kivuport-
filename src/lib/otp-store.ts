@@ -44,7 +44,10 @@ export async function checkOtp(email: string, code: string): Promise<boolean> {
     .eq("email", emailKey)
     .single();
 
-  if (error || !data) return false;
+  if (error) {
+    throw new Error(`OTP verification failed: ${error.message}`);
+  }
+  if (!data) return false;
 
   const now = new Date();
   const expiresAt = new Date(data.expires_at);
@@ -72,7 +75,10 @@ export async function consumeOtp(email: string, code: string): Promise<boolean> 
     .eq("email", emailKey)
     .single();
 
-  if (error || !data) return false;
+  if (error) {
+    throw new Error(`OTP verification failed: ${error.message}`);
+  }
+  if (!data) return false;
 
   const expiresAt = new Date(data.expires_at);
   if (expiresAt.getTime() < new Date().getTime()) {
