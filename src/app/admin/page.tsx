@@ -1844,6 +1844,7 @@ export default function AdminPage() {
 
   // ===== ACTIONS GROUPÉES =====
   const [selectedReservations, setSelectedReservations] = useState<Set<number>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // ===== MODE SOMBRE =====
   const [isDark, setIsDark] = useState(false);
@@ -2513,7 +2514,9 @@ export default function AdminPage() {
           genre: formData.genre || null,
           statut: formData.statut || "actif",
         })
-        .eq("id", selectedClient.id);
+        .eq("id", selectedClient.id)
+        .select("id")
+        .single();
 
       if (error) {
         toast.error(`Erreur lors de la modification : ${error.message}`);
@@ -2555,12 +2558,14 @@ export default function AdminPage() {
         return;
       }
 
-      const { error } = await supabase
+      const { data: deletedClient, error } = await supabase
         .from("client")
         .delete()
-        .eq("id", selectedClient.id);
+        .eq("id", selectedClient.id)
+        .select("id")
+        .single();
 
-      if (error) {
+      if (error || !deletedClient) {
         toast.error(`Erreur lors de la suppression : ${error.message}`);
         return;
       }
@@ -2594,7 +2599,9 @@ export default function AdminPage() {
           capacite_cargaison: parseInt(formData.capacite_cargaison || "0"),
           statut: formData.statut || "en_service",
         })
-        .eq("id", selectedItem.id);
+        .eq("id", selectedItem.id)
+        .select("id")
+        .single();
       if (error) return toast.error(`Erreur modification bateau : ${error.message}`);
       toast.success("Bateau modifié avec succès !");
       setEditModalOpen(false);
@@ -2617,8 +2624,8 @@ export default function AdminPage() {
         setDeleteModalOpen(false);
         return;
       }
-      const { error } = await supabase.from("bateaux").delete().eq("id", selectedItem.id);
-      if (error) return toast.error(`Erreur suppression bateau : ${error.message}`);
+      const { data: deletedBoat, error } = await supabase.from("bateaux").delete().eq("id", selectedItem.id).select("id").single();
+      if (error || !deletedBoat) return toast.error(`Erreur suppression bateau : ${error?.message || "Bateau introuvable"}`);
       toast.success("Bateau supprimé avec succès !");
       setDeleteModalOpen(false);
       setSelectedItem(null);
@@ -2643,7 +2650,9 @@ export default function AdminPage() {
           date_depart: formData.date_depart ? new Date(formData.date_depart).toISOString() : undefined,
           statut: formData.statut || "prevu",
         })
-        .eq("id", selectedItem.id);
+        .eq("id", selectedItem.id)
+        .select("id")
+        .single();
       if (error) return toast.error(`Erreur modification voyage : ${error.message}`);
       toast.success("Voyage modifié avec succès !");
       setEditModalOpen(false);
@@ -2666,8 +2675,8 @@ export default function AdminPage() {
         setDeleteModalOpen(false);
         return;
       }
-      const { error } = await supabase.from("voyages").delete().eq("id", selectedItem.id);
-      if (error) return toast.error(`Erreur suppression voyage : ${error.message}`);
+      const { data: deletedVoyage, error } = await supabase.from("voyages").delete().eq("id", selectedItem.id).select("id").single();
+      if (error || !deletedVoyage) return toast.error(`Erreur suppression voyage : ${error?.message || "Voyage introuvable"}`);
       toast.success("Voyage supprimé avec succès !");
       setDeleteModalOpen(false);
       setSelectedItem(null);
@@ -2695,7 +2704,9 @@ export default function AdminPage() {
           prix_tonne: formData.prix_tonne ? parseFloat(formData.prix_tonne) : null,
           devise: formData.devise || "FC",
         })
-        .eq("id", selectedItem.id);
+        .eq("id", selectedItem.id)
+        .select("id")
+        .single();
       if (error) return toast.error(`Erreur modification pavillon : ${error.message}`);
       toast.success("Pavillon modifié avec succès !");
       setEditModalOpen(false);
@@ -2718,8 +2729,8 @@ export default function AdminPage() {
         setDeleteModalOpen(false);
         return;
       }
-      const { error } = await supabase.from("pavillons").delete().eq("id", selectedItem.id);
-      if (error) return toast.error(`Erreur suppression pavillon : ${error.message}`);
+      const { data: deletedPavilion, error } = await supabase.from("pavillons").delete().eq("id", selectedItem.id).select("id").single();
+      if (error || !deletedPavilion) return toast.error(`Erreur suppression pavillon : ${error?.message || "Pavillon introuvable"}`);
       toast.success("Pavillon supprimé avec succès !");
       setDeleteModalOpen(false);
       setSelectedItem(null);
@@ -2744,7 +2755,9 @@ export default function AdminPage() {
           localisation: formData.localisation,
           statut: formData.statut || "actif",
         })
-        .eq("id", selectedItem.id);
+        .eq("id", selectedItem.id)
+        .select("id")
+        .single();
       if (error) return toast.error(`Erreur modification port : ${error.message}`);
       toast.success("Port modifié avec succès !");
       setEditModalOpen(false);
@@ -2767,8 +2780,8 @@ export default function AdminPage() {
         setDeleteModalOpen(false);
         return;
       }
-      const { error } = await supabase.from("ports").delete().eq("id", selectedItem.id);
-      if (error) return toast.error(`Erreur suppression port : ${error.message}`);
+      const { data: deletedPort, error } = await supabase.from("ports").delete().eq("id", selectedItem.id).select("id").single();
+      if (error || !deletedPort) return toast.error(`Erreur suppression port : ${error?.message || "Port introuvable"}`);
       toast.success("Port supprimé avec succès !");
       setDeleteModalOpen(false);
       setSelectedItem(null);
@@ -2794,7 +2807,9 @@ export default function AdminPage() {
           type_quai: formData.type_quai || "mixte",
           statut: formData.statut || "libre",
         })
-        .eq("id", selectedItem.id);
+        .eq("id", selectedItem.id)
+        .select("id")
+        .single();
       if (error) return toast.error(`Erreur modification quai : ${error.message}`);
       toast.success("Quai modifié avec succès !");
       setEditModalOpen(false);
@@ -2817,8 +2832,8 @@ export default function AdminPage() {
         setDeleteModalOpen(false);
         return;
       }
-      const { error } = await supabase.from("quais").delete().eq("id", selectedItem.id);
-      if (error) return toast.error(`Erreur suppression quai : ${error.message}`);
+      const { data: deletedDock, error } = await supabase.from("quais").delete().eq("id", selectedItem.id).select("id").single();
+      if (error || !deletedDock) return toast.error(`Erreur suppression quai : ${error?.message || "Quai introuvable"}`);
       toast.success("Quai supprimé avec succès !");
       setDeleteModalOpen(false);
       setSelectedItem(null);
@@ -2842,7 +2857,12 @@ export default function AdminPage() {
 
   const toggleSelectAllVisible = () => {
     setSelectedReservations((prev) => {
-      if (prev.size === paginatedReservations.length && paginatedReservations.length > 0) return new Set();
+      const allVisibleSelected = paginatedReservations.length > 0 && paginatedReservations.every((reservation) => prev.has(reservation.id));
+      if (allVisibleSelected) {
+        const next = new Set(prev);
+        paginatedReservations.forEach((reservation) => next.delete(reservation.id));
+        return next;
+      }
       const next = new Set(prev);
       paginatedReservations.forEach((r) => next.add(r.id));
       return next;
@@ -2869,6 +2889,49 @@ export default function AdminPage() {
     setSelectedReservations(new Set());
     setReloadKey((k) => k + 1);
     toast.success(`${ok}/${ids.length} réservation(s) ${action === "confirm" ? "confirmée(s)" : "annulée(s)"}`);
+  };
+
+  const bulkDeleteReservations = async () => {
+    if (selectedReservations.size === 0) {
+      toast.warning("Aucune réservation sélectionnée");
+      return;
+    }
+
+    const ids = Array.from(selectedReservations);
+    if (!window.confirm(`Supprimer définitivement ${ids.length} réservation(s) ? Cette action est irréversible.`)) return;
+
+    setIsBulkDeleting(true);
+    let deleted = 0;
+    const failures: string[] = [];
+    try {
+      for (const id of ids) {
+        const { data, error } = await supabase
+          .from("reservations")
+          .delete()
+          .eq("id", id)
+          .select("id")
+          .single();
+
+        if (error || !data) {
+          failures.push(`KP-${String(id).padStart(4, "0")}: ${error?.message || "introuvable"}`);
+        } else {
+          deleted++;
+        }
+      }
+
+      setSelectedReservations(new Set());
+      setReloadKey((key) => key + 1);
+
+      if (failures.length > 0) {
+        toast.error(`${deleted} réservation(s) supprimée(s), ${failures.length} échec(s). ${failures[0]}`);
+      } else {
+        toast.success(`${deleted} réservation(s) supprimée(s) définitivement.`);
+      }
+    } catch (error) {
+      toast.error(`La suppression multiple a échoué : ${error instanceof Error ? error.message : "erreur inconnue"}`);
+    } finally {
+      setIsBulkDeleting(false);
+    }
   };
 
   const exportSelected = () => {
@@ -2911,6 +2974,22 @@ export default function AdminPage() {
         const raw = String(reservation.amount ?? "0").replace(/[^0-9,.-]/g, "").replace(",", ".");
         return sum + (Number(raw) || 0);
       }, 0);
+      const currencyTotals = rawPayments
+        .filter((payment) => payment.statut === "paye" || payment.statut === "confirme")
+        .filter((payment) => {
+          if (periodFilter === "tous" || !payment.date_paiement) return true;
+          const paymentDate = new Date(payment.date_paiement);
+          const now = new Date();
+          if (periodFilter === "aujourdhui") return paymentDate.toDateString() === now.toDateString();
+          const start = new Date(now);
+          start.setDate(start.getDate() - (periodFilter === "semaine" ? 7 : 30));
+          return paymentDate >= start;
+        })
+        .reduce((totals, payment) => {
+          const devise = String(payment.devise || "CDF").toUpperCase() === "USD" ? "USD" : "CDF";
+          totals[devise] += Number(payment.montant || 0);
+          return totals;
+        }, { CDF: 0, USD: 0 });
 
       const confirmed = filteredReservations.filter((r) => r.status === "Confirmée" || r.status === "Payée").length;
       const pending = filteredReservations.filter((r) => r.status === "En attente").length;
@@ -2948,17 +3027,76 @@ export default function AdminPage() {
         { label: "Réservations", value: String(filteredReservations.length), color: rgb(0.13, 0.59, 0.95) },
         { label: "Confirmées", value: String(confirmed), color: rgb(0.21, 0.78, 0.55) },
         { label: "En attente", value: String(pending), color: rgb(0.98, 0.66, 0.15) },
-        { label: "Montant", value: `${totalRevenue.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} USD`, color: rgb(0.31, 0.35, 0.8) },
+        { label: "CDF encaissés", value: currencyTotals.CDF.toLocaleString("fr-FR", { maximumFractionDigits: 2 }), color: rgb(0.31, 0.35, 0.8) },
+        { label: "USD encaissés", value: currencyTotals.USD.toLocaleString("fr-FR", { maximumFractionDigits: 2 }), color: rgb(0.55, 0.35, 0.8) },
       ];
 
       summaryCards.forEach((card, index) => {
-        const x = margin + index * 130;
-        currentPage.drawRectangle({ x, y: y - 8, width: 115, height: 54, color: card.color });
+        const x = margin + index * 102;
+        currentPage.drawRectangle({ x, y: y - 8, width: 94, height: 54, color: card.color });
         currentPage.drawText(card.label, { x: x + 10, y: y + 20, size: 8, font: font, color: rgb(1, 1, 1) });
         currentPage.drawText(pdfText(card.value), { x: x + 10, y: y + 2, size: 15, font: fontBold, color: rgb(1, 1, 1) });
       });
 
       y -= 84;
+      const chartTop = y;
+      const chartHeight = 112;
+      const chartWidth = 160;
+      const chartGap = 15;
+      const chartX = [margin, margin + chartWidth + chartGap, margin + (chartWidth + chartGap) * 2];
+      const chartTitles = ["Statut des réservations", "Répartition des devises", "Activité par statut"];
+      const chartData = [
+        [
+          { label: "Confirmées", value: confirmed, color: rgb(0.21, 0.78, 0.55) },
+          { label: "En attente", value: pending, color: rgb(0.98, 0.66, 0.15) },
+          { label: "Annulées", value: canceled, color: rgb(0.93, 0.27, 0.27) },
+        ],
+        [
+          { label: "CDF", value: currencyTotals.CDF, color: rgb(0.13, 0.59, 0.95) },
+          { label: "USD", value: currencyTotals.USD, color: rgb(0.55, 0.35, 0.8) },
+        ],
+        [
+          { label: "Réservations", value: filteredReservations.length, color: rgb(0.13, 0.59, 0.95) },
+          { label: "Payées", value: filteredReservations.filter((r) => r.status === "Payée").length, color: rgb(0.21, 0.78, 0.55) },
+        ],
+      ];
+
+      chartData.forEach((items, chartIndex) => {
+        const x = chartX[chartIndex];
+        currentPage.drawRectangle({
+          x,
+          y: chartTop - chartHeight,
+          width: chartWidth,
+          height: chartHeight,
+          color: rgb(1, 1, 1),
+          borderColor: rgb(0.86, 0.89, 0.94),
+          borderWidth: 1,
+        });
+        currentPage.drawText(chartTitles[chartIndex], {
+          x: x + 10,
+          y: chartTop - 18,
+          size: 8,
+          font: fontBold,
+          color: rgb(0.12, 0.18, 0.3),
+        });
+        const maxValue = Math.max(...items.map((item) => item.value), 1);
+        items.forEach((item, itemIndex) => {
+          const barY = chartTop - 40 - itemIndex * 28;
+          const barWidth = Math.max(3, (item.value / maxValue) * 92);
+          currentPage.drawText(pdfText(item.label), { x: x + 10, y: barY + 3, size: 7, font, color: rgb(0.3, 0.34, 0.4) });
+          currentPage.drawRectangle({ x: x + 62, y: barY, width: 92, height: 10, color: rgb(0.92, 0.94, 0.97) });
+          currentPage.drawRectangle({ x: x + 62, y: barY, width: barWidth, height: 10, color: item.color });
+          currentPage.drawText(pdfText(item.value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })), {
+            x: x + 62,
+            y: barY - 10,
+            size: 6.5,
+            font,
+            color: rgb(0.25, 0.28, 0.34),
+          });
+        });
+      });
+
+      y = chartTop - chartHeight - 24;
       currentPage.drawLine({ start: { x: margin, y }, end: { x: pageWidth - margin, y }, thickness: 1, color: rgb(0.85, 0.85, 0.85) });
       y -= 18;
 
@@ -3359,7 +3497,9 @@ export default function AdminPage() {
       const { error } = await supabase
         .from("reservations")
         .update({ statut: target })
-        .eq("id", selectedItem.id);
+        .eq("id", selectedItem.id)
+        .select("id")
+        .single();
       if (error) return toast.error(`Erreur modification réservation : ${error.message}`);
       toast.success("Réservation modifiée avec succès !");
       setEditModalOpen(false);
@@ -3376,8 +3516,8 @@ export default function AdminPage() {
     if (!selectedItem) return;
     setIsDeleting(true);
     try {
-      const { error } = await supabase.from("reservations").delete().eq("id", selectedItem.id);
-      if (error) return toast.error(`Erreur suppression réservation : ${error.message}`);
+      const { data: deletedReservation, error } = await supabase.from("reservations").delete().eq("id", selectedItem.id).select("id").single();
+      if (error || !deletedReservation) return toast.error(`Erreur suppression réservation : ${error?.message || "Réservation introuvable"}`);
       toast.success("Réservation supprimée avec succès !");
       setDeleteModalOpen(false);
       setSelectedItem(null);
@@ -3816,13 +3956,23 @@ export default function AdminPage() {
                       className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
                       type="button"
                       onClick={exportSelected}
+                      disabled={isBulkDeleting}
                     >
                       <Download size={14} /> Exporter
+                    </button>
+                    <button
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition-colors disabled:opacity-50"
+                      type="button"
+                      onClick={bulkDeleteReservations}
+                      disabled={isBulkDeleting}
+                    >
+                      <Trash2 size={14} /> {isBulkDeleting ? "Suppression..." : "Supprimer"}
                     </button>
                     <button
                       className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm transition-colors"
                       type="button"
                       onClick={() => setSelectedReservations(new Set())}
+                      disabled={isBulkDeleting}
                     >
                       <XCircle size={14} /> Effacer
                     </button>
