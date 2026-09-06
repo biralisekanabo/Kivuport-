@@ -17,6 +17,30 @@ function normalizePhone(value: string): string {
   return digits.length >= 9 ? `+243${digits}` : "";
 }
 
+function detectProvider(phone: string): string {
+  const digits = phone.replace(/\D/g, "").replace(/^243/, "0");
+  if (/^0(97|98|99)/.test(digits)) return "AIRTEL";
+  if (/^0(84|85|86|87|88|89)/.test(digits)) return "ORANGE";
+  if (/^0(81|82)/.test(digits)) return "VODACOM";
+  return "AIRTEL";
+}
+
+function providerPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("243") && digits.length === 12) return `0${digits.slice(3)}`;
+  return digits;
+}
+
+function merchantPhone(provider: string): string {
+  if (provider === "VODACOM") {
+    return process.env.MAISHA_VODACOM_MERCHANT_PHONE || "0822473655";
+  }
+
+  return process.env.MAISHA_AIRTEL_MERCHANT_PHONE
+    || process.env.MAISHA_MERCHANT_PHONE
+    || "0977241669";
+}
+
 export async function POST(request: Request) {
   let body: PaymentRequest;
 
@@ -123,7 +147,7 @@ export async function POST(request: Request) {
 
   const reservation = await supabase
     .from("reservations")
-    .select("statut, prix_total, token_expire_at, client:client(telephone, email)")
+    .select("statut, prix_total, token_expire_at, client:client(telephone, email, nom, prenom)")
     .eq("id", reservationId)
     .single();
 
@@ -131,7 +155,7 @@ export async function POST(request: Request) {
     statut?: string;
     prix_total?: number | string;
     token_expire_at?: string | null;
-    client?: { telephone?: string | null; email?: string | null } | null;
+    client?: { telephone?: string | null; email?: string | null; nom?: string | null; prenom?: string | null } | null;
   } | null;
 
   if (!reservationData) {
@@ -182,31 +206,42 @@ export async function POST(request: Request) {
 
   if (apiUrl && apiKey && apiSecret) {
     try {
-      const providerBody = new URLSearchParams({
-        transactionReference: externalReference,
-        gatewayMode: process.env.MAISHA_GATEWAY_MODE ?? "1",
-        publicApiKey: apiKey,
-        secretApiKey: apiSecret,
-        "order[amount]": String(paymentAmount),
-        "order[currency]": "CDF",
-        "paymentChannel[channel]": "mobileMoney",
-        "paymentChannel[provider]": "maishaPay",
-        "paymentChannel[walletID]": clientPhone,
-      });
-
+      const provider = detectProvider(clientPhone);
       const providerResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+          "Content-Type": "application/json",
         },
-        body: providerBody.toString(),
+        body: JSON.stringify({
+          transactionReference: externalReference,
+          gatewayMode: process.env.MAISHA_GATEWAY_MODE ?? "1",
+          publicApiKey: apiKey,
+          secretApiKey: apiSecret,
+          order: {
+            amount: paymentAmount,
+            currency: "CDF",
+            customerFullName: [reservationData.client?.prenom, reservationData.client?.nom].filter(Boolean).join(" ") || "KivuPort Client",
+            customerEmailAdress: reservationData.client?.email || "client@kivuport.com",
+          },
+          paymentChannel: {
+            channel: "MOBILEMONEY",
+            provider,
+            walletID: providerPhone(clientPhone),
+            merchantWalletID: merchantPhone(provider),
+          },
+        }),
       });
 
       if (!providerResponse.ok) {
         const providerText = await providerResponse.text();
         console.error("MaishaPay request failed:", providerText);
         return NextResponse.json(
-          { error: "La demande de paiement MaishaPay a échoué.", providerStatus: providerResponse.status },
+          {
+            error: "La demande de paiement MaishaPay a échoué.",
+            providerStatus: providerResponse.status,
+            providerDetails: providerText.slice(0, 500),
+          },
           { status: 502 }
         );
       }

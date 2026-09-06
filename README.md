@@ -23,7 +23,7 @@ Renseigner dans `.env.local` :
 - `NEXT_PUBLIC_APP_URL` pour les liens contenus dans les emails.
 - `MAISHA_API_KEY`, `MAISHA_API_SECRET` et `MAISHA_API_URL` pour l'API officielle MaishaPay.
 - `MAISHA_GATEWAY_MODE=1` pour le mode live (`0` pour sandbox).
-- `MAISHA_MERCHANT_PHONE=0977241669` pour documenter le numéro du compte marchand destinataire ; MaishaPay détermine le compte destinataire à partir des clés API, tandis que `walletID` reste le téléphone du client qui confirme par PIN.
+- `MAISHA_AIRTEL_MERCHANT_PHONE=0977241669` et `MAISHA_VODACOM_MERCHANT_PHONE=0822473655` pour les comptes marchands destinataires ; `walletID` reste toujours le téléphone du client qui confirme par PIN.
 
 Activer Google dans Supabase Authentication > Providers et déclarer l’URL de redirection de l’application. Le flux demande le choix explicite du compte avec `select_account`.
 

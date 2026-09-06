@@ -191,12 +191,12 @@ export default function PublicPaymentPage() {
       const res = await fetch("/api/payments/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, method: "maisha_pay" }),
+        body: JSON.stringify({ token, method: "maisha_pay", phone }),
       });
       const result = await res.json();
       if (!res.ok) {
         setPaymentCompleted(false);
-        setMessage(result?.error || "Le paiement a échoué.");
+        setMessage(result?.providerDetails ? `${result.error} ${result.providerDetails}` : result?.error || "Le paiement a échoué.");
         setMessageType("error");
         setIsPaying(false);
         if (result?.attempts) setAttempts(result.attempts);
