@@ -25,14 +25,12 @@ function detectProvider(phone: string): string {
   return "AIRTEL";
 }
 
-function merchantPhone(provider: string): string {
-  if (provider === "VODACOM") {
-    return process.env.MAISHA_VODACOM_MERCHANT_PHONE || "0822473655";
-  }
-
-  return process.env.MAISHA_AIRTEL_MERCHANT_PHONE
-    || process.env.MAISHA_MERCHANT_PHONE
-    || "0977241669";
+function providerCredentials(provider: string): { apiKey?: string; apiSecret?: string } {
+  const prefix = provider === "VODACOM" ? "VODACOM" : "AIRTEL";
+  return {
+    apiKey: (process.env[`MAISHA_${prefix}_API_KEY`] || process.env.MAISHA_API_KEY)?.trim(),
+    apiSecret: (process.env[`MAISHA_${prefix}_API_SECRET`] || process.env.MAISHA_API_SECRET)?.trim(),
+  };
 }
 
 export async function POST(request: Request) {
@@ -195,12 +193,11 @@ export async function POST(request: Request) {
   }
 
   const apiUrl = process.env.MAISHA_API_URL;
-  const apiKey = process.env.MAISHA_API_KEY;
-  const apiSecret = process.env.MAISHA_API_SECRET;
+  const provider = detectProvider(clientPhone);
+  const { apiKey, apiSecret } = providerCredentials(provider);
 
   if (apiUrl && apiKey && apiSecret) {
     try {
-      const provider = detectProvider(clientPhone);
       const providerResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -223,7 +220,6 @@ export async function POST(request: Request) {
             provider,
             // MaishaPay expects the customer's wallet in international format.
             walletID: clientPhone,
-            merchantWalletID: merchantPhone(provider),
           },
         }),
       });
