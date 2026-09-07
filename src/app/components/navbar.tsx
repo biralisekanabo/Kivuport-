@@ -494,7 +494,7 @@ export function Navbar({ onLogin, onSignup, authOpen = false }: NavbarProps = {}
                     </button>
                   ) : (
                     <button onClick={() => { openLogin(); setIsMobileMenuOpen(false); }} className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-blue-500/30">
-                      Espace Client
+                      Connexion / Inscription
                     </button>
                   )}
                 </div>
