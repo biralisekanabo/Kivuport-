@@ -245,7 +245,7 @@ export function Navbar({ onLogin, onSignup, authOpen = false }: NavbarProps = {}
                     animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <Sparkles size={10} className="text-amber-400 drop-shadow-md" />
+                    
                   </motion.div>
                 </div>
               </motion.div>
